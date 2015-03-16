@@ -4,7 +4,7 @@ macroShortDescription = "This macro loads images and ROIs (.zip) to do segmetati
 macroDescription = "This macro loads images and ROIs (.zip) to do segmetation for pre-processed Opera images (.tif)." +
 	"\nOptionally, new segmentation parameters can be adjusted and measurement can be done in multiple channels" +
 	"\nIn the manual mode the macro allows interactively to process each image manually, alternatively batch processing is possible.";
-macroRelease = "third release 19-02-2014 by Macro_Segment2D_in_ROI Martin Stöter (stoeter(at)mpi-cbg.de)";
+macroRelease = "fourth release 14-10-2014 by Macro_Segment2D_in_ROI Martin Stöter (stoeter(at)mpi-cbg.de)";
 macroHelpURL = "http://idisk-srv1.mpi-cbg.de/knime/FijiUpdate/TDS%20macros/" + macroName + ".htm";
 macroHtml = "<html>"
 	+"<font color=red>" + macroName + "/n" + macroRelease + "</font> <br>"
@@ -35,7 +35,6 @@ print(printPaths);
 tempLogFileNumber = 1;
 while (File.exists(outputPath + "Log_temp_" + tempLogFileNumber +".txt")) tempLogFileNumber ++; //find last tempLog file to prevent overwriting of log 
 
-//availableImageFormats = newArray("Opera (.tif)", "Opera (.flex)", "Exported (.tif)", "ArrayScan (.c01)");  //image formats to choose
 availableImageFormats = newArray("Opera (.tif)");  //image formats to choose
 
 Dialog.create("Conditions");
@@ -88,7 +87,7 @@ for (i = 0; i < numberOfChannels; i++) channelsTags[i] = Dialog.getString();
 ROIpixelsForSegmentation = Dialog.getChoice();
 previousSegmentation = Dialog.getCheckbox();
 //to log
-print("Segmentation parameters: segmentation in" + ROIpixelsForSegmentation + "; Gaussian radius =",gaussianBlurRadius,"; Unsharp mask radius/weight =",unsharpMaskRadius,"/",maskWeight,"; Auto Threshold Method =",autoThresholdMethod,"\nMinimum object size =",minObjectSize,"; Maximum object size =",maxObjectSize);
+print("Segmentation parameters (default): segmentation in" + ROIpixelsForSegmentation + "; Gaussian radius =",gaussianBlurRadius,"; Unsharp mask radius/weight =",unsharpMaskRadius,"/",maskWeight,"; Auto Threshold Method =",autoThresholdMethod,"\nMinimum object size =",minObjectSize,"; Maximum object size =",maxObjectSize);
 
 //get list of channels
 channelTagList = newArray(0);
@@ -132,7 +131,7 @@ filteredFileList = Array.slice(filteredFileList,0,k);
 //setBatchMode(true);
 //configure
 run("Set Measurements...", "area mean standard min centroid center shape integrated median display redirect=None decimal=3");
-run("Input/Output...", "jpeg=75 gif=-1 file=.txt copy_column copy_row save_column save_row");	
+run("Input/Output...", "jpeg=95 gif=-1 file=.txt copy_column copy_row save_column save_row");	
 run("Options...", "iterations=1 count=1 black edm=Overwrite");
 run("Close All");
 setForegroundColor(0, 0, 0);
@@ -147,179 +146,183 @@ exampleFileName = getImageFileExample(filteredFileList);
 for (currentWell = startAtWellNumber-1; currentWell < wellList.length; currentWell++) { //currentWell < wellList.length; 26-27
 	//fileName = wellList[currentWell] + substring(exampleFileName, 6,lengthOf(exampleFileName)); 
 	fileName = wellList[currentWell] + substring(exampleFileName, 6,lengthOf(exampleFileName)); 
-	//to log window
-	print("#",currentWell,", well:", wellList[currentWell], ", file:", fileName);
+	IJ.redirectErrorMessages();
 	if (imageFormat == "Opera (.tif)") open(inputPath + fileName);
-	imageTitle = getTitle();
-	heightPixel = getHeight();
-	widthPixel = getWidth();
-	if (manualMode) {
-		run("Enhance Contrast", "saturated=0.35");
-		Dialog.create("Analyse image?");
-		Dialog.addCheckbox("Analyse image?", analyseWell);
-		Dialog.addCheckbox("Stay in manual mode?", true);	
-		Dialog.addCheckbox("Check final control image?", checkControlImage);
-		Dialog.show();
-		analyseWell = Dialog.getCheckbox();
-		manualMode = Dialog.getCheckbox();
-		checkControlImage = Dialog.getCheckbox();
-		}
-	if (analyseWell) {
-		//reset ROImanager and load ROI
-		if (isOpen("ROI Manager")) {
-		     selectWindow("ROI Manager");
-		     run("Close");
-		     }
-		roiFileName = substring(fileName, 0, lengthOf(fileName)-4)  + "_ROIset.zip";
-		if (!File.exists(roiPath + roiFileName)) {
-			printText = "ROI-file not found:\n" + roiFileName + "\nnot found in folder: " + roiPath;
-			print(printText);
-			close(imageTitle);
-			} else {			
-			run("Select None");
-			run("ROI Manager...");
-			roiManager("Show None");
-			roiManager("Open", roiPath + roiFileName);
-			//generate ROI outline image
-			newImage("ROI outline", "8-bit white", widthPixel, heightPixel, 1);
-			roiManager("Select", 0);
-			roiManager("Draw");
-			run("Invert");
-			if (previousSegmentation) { //use loaded segmentation
-				//generate segmentation outline image
-				//setBatchMode(true);
-				newImage("Segmentation outline", "8-bit white", widthPixel, heightPixel, 1);
-				for (i=1; i < roiManager("count"); i++) {
-      					roiManager("Select", i);
-					roiManager("Draw");
-					}
-				run("Invert");
-				} else {  //do new sementation 
-				//setBatchMode(true);
-				roiCount = roiManager("count");
-				for (i=1; i < roiCount; i++) { //deletes ROIs backwards from last until secon ROI, first is kept
-					roiManager("Select", roiCount - i);
-					roiManager("Delete");
-					}
-				updateResults();
-				setBatchMode(false);
-				do {  //do auto threshold montage until dialog unchecked
-					if (isOpen(segmentationImage)) close(segmentationImage);
-					selectWindow(fileName);
-					if (manualMode) {
-						Dialog.create("Set segmentation parameters?");	
-						Dialog.addChoice("For segmentation use pixels from:", availableROIpixelsForSegmentation, ROIpixelsForSegmentation);
-						Dialog.addMessage(" ... in manual mode only one segmentation region!")
-						Dialog.addNumber("Gaussian Blur radius:", gaussianBlurRadius);
-						Dialog.addNumber("Background subtraction:", rollingBallRadius);
-						Dialog.addNumber("Unsharp Mask radius:", unsharpMaskRadius);
-						Dialog.addNumber("Unsharp Mask weight:", maskWeight);
-						Dialog.addMessage(" ... enter 0 for no blur, no subtraction or no unsharp mask!")	
-						Dialog.addChoice("Auto Threshold method?", allAutoThresholdMethods, autoThresholdMethod);
-						Dialog.addCheckbox("Show all auto threshold methods?", false);
-						Dialog.addNumber("Minumum object size:", minObjectSize);
-						Dialog.addNumber("Maximum object size:", maxObjectSize);
-						Dialog.show();
-						ROIpixelsForSegmentation = Dialog.getChoice();
-						gaussianBlurRadius = Dialog.getNumber();
-						rollingBallRadius = Dialog.getNumber();
-						unsharpMaskRadius = Dialog.getNumber();
-						maskWeight = Dialog.getNumber();
-						autoThresholdMethod = Dialog.getChoice();
-						autoThresholdMontage = Dialog.getCheckbox();
-						minObjectSize = Dialog.getNumber();
-						maxObjectSize = Dialog.getNumber();
-						print("Segmentation parameters: segmentation in" + ROIpixelsForSegmentation + "; Gaussian radius =",gaussianBlurRadius,"; Unsharp mask radius =",unsharpMaskRadius,"/",maskWeight,"; Auto Threshold Method =",autoThresholdMethod,"\nMinumum object size =",minObjectSize,"; Maximum object size =",maxObjectSize);
-						}
-					run("Duplicate...", "title=" + segmentationImage);
-					if (gaussianBlurRadius > 0) run("Gaussian Blur...", "sigma=" + gaussianBlurRadius);
-					if (rollingBallRadius > 0) run("Subtract Background...", "rolling=" + rollingBallRadius);					
-					if (unsharpMaskRadius > 0) run("Unsharp Mask...", "radius=" + unsharpMaskRadius + " mask=" + maskWeight);
-					if (indexOf(ROIpixelsForSegmentation, "ROI_only") >= 0) {
-						selectWindow(segmentationImage);
-						roiManager("Select", 0);
-						run("Restore Selection");
-						run("Create Mask");
-						ROImaskImage = getTitle();
-						run("Divide...", "value=255");
-						imageCalculator("Multiply create", segmentationImage, ROImaskImage);
-						segmentationImageROI = getTitle();
-						}
-					if (autoThresholdMontage) {
-						run("Auto Threshold", "method=[Try all] ignore_black ignore_white white");	
-						montageImage = getTitle();
-						waitForUser("'OK' to continue... (back to dialog)");
-						}
-					if (isOpen(montageImage)) close(montageImage);
-					if (isOpen(ROImaskImage)) close(ROImaskImage);
-					if (isOpen(segmentationImageROI)) close(segmentationImageROI);
-					} while (autoThresholdMontage);
-				selectWindow(segmentationImage);
-				run("Auto Threshold", "method=" + autoThresholdMethod + " ignore_black ignore_white white");
-				run("Watershed");
+	if (!(nImages > 0)) print("#",currentWell,", well:", wellList[currentWell], ", file:", fileName, "could not be opened!"); //if no file was found
+		else {
+			//to log window
+		print("#",currentWell,", well:", wellList[currentWell], ", file:", fileName);
+		imageTitle = getTitle();
+		heightPixel = getHeight();
+		widthPixel = getWidth();
+		if (manualMode) {
+			run("Enhance Contrast", "saturated=0.35");
+			Dialog.create("Analyse image?");
+			Dialog.addCheckbox("Analyse image?", analyseWell);
+			Dialog.addCheckbox("Stay in manual mode?", true);	
+			Dialog.addCheckbox("Check final control image?", checkControlImage);
+			Dialog.show();
+			analyseWell = Dialog.getCheckbox();
+			manualMode = Dialog.getCheckbox();
+			checkControlImage = Dialog.getCheckbox();
+			}
+		if (analyseWell) {
+			//reset ROImanager and load ROI
+			if (isOpen("ROI Manager")) {
+			     selectWindow("ROI Manager");
+			     run("Close");
+			     }
+			roiFileName = substring(fileName, 0, lengthOf(fileName)-4)  + "_ROIset.zip";
+			if (!File.exists(roiPath + roiFileName)) {
+				printText = "ROI-file not found:\n" + roiFileName + "\nnot found in folder: " + roiPath;
+				print(printText);
+				close(imageTitle);
+				} else {			
+				run("Select None");
+				run("ROI Manager...");
+				roiManager("Show None");
+				roiManager("Open", roiPath + roiFileName);
+				//generate ROI outline image
+				newImage("ROI outline", "8-bit white", widthPixel, heightPixel, 1);
 				roiManager("Select", 0);
-				run("Analyze Particles...", "size=" + minObjectSize + "-" + maxObjectSize + " circularity=0.00-1.00 show=[Bare Outlines] include add");
-				rename("Segmentation outline");
+				roiManager("Draw");
 				run("Invert");
-				close(segmentationImage);
-				roiManager("save", outputPath + substring(fileName, 0, lengthOf(fileName)-4)  + "_ROIsetNew.zip");
-				}
-			//now analyse ROI image
-			selectWindow(fileName);
-			run("Select None");
-  			run("Clear Results");
-			//setBatchMode(true);
-			selectWindow(fileName);
-			for (i=0; i < roiManager("count"); i++) {  //measure segmentation channel
-      					roiManager("Select", i);
+				if (previousSegmentation) { //use loaded segmentation
+					//generate segmentation outline image
+					//setBatchMode(true);
+					newImage("Segmentation outline", "8-bit white", widthPixel, heightPixel, 1);
+					for (i=1; i < roiManager("count"); i++) {
+   	   					roiManager("Select", i);
+						roiManager("Draw");
+						}
+					run("Invert");
+					} else {  //do new sementation 
+					//setBatchMode(true);
+					roiCount = roiManager("count");
+					for (i=1; i < roiCount; i++) { //deletes ROIs backwards from last until secon ROI, first is kept
+						roiManager("Select", roiCount - i);
+						roiManager("Delete");
+						}
+					updateResults();
+					setBatchMode(false);
+					do {  //do auto threshold montage until dialog unchecked
+						if (isOpen(segmentationImage)) close(segmentationImage);
+						selectWindow(fileName);
+						if (manualMode) {
+							Dialog.create("Set segmentation parameters?");	
+							Dialog.addChoice("For segmentation use pixels from:", availableROIpixelsForSegmentation, ROIpixelsForSegmentation);
+							Dialog.addMessage(" ... in manual mode only one segmentation region!")
+							Dialog.addNumber("Gaussian Blur radius:", gaussianBlurRadius);
+							Dialog.addNumber("Background subtraction:", rollingBallRadius);
+							Dialog.addNumber("Unsharp Mask radius:", unsharpMaskRadius);
+							Dialog.addNumber("Unsharp Mask weight:", maskWeight);
+							Dialog.addMessage(" ... enter 0 for no blur, no subtraction or no unsharp mask!")	
+							Dialog.addChoice("Auto Threshold method?", allAutoThresholdMethods, autoThresholdMethod);
+							Dialog.addCheckbox("Show all auto threshold methods?", false);
+							Dialog.addNumber("Minumum object size:", minObjectSize);
+							Dialog.addNumber("Maximum object size:", maxObjectSize);
+							Dialog.show();
+							ROIpixelsForSegmentation = Dialog.getChoice();
+							gaussianBlurRadius = Dialog.getNumber();
+							rollingBallRadius = Dialog.getNumber();
+							unsharpMaskRadius = Dialog.getNumber();
+							maskWeight = Dialog.getNumber();
+							autoThresholdMethod = Dialog.getChoice();
+							autoThresholdMontage = Dialog.getCheckbox();
+							minObjectSize = Dialog.getNumber();
+							maxObjectSize = Dialog.getNumber();
+							print("Segmentation parameters: segmentation in" + ROIpixelsForSegmentation + "; Gaussian radius =",gaussianBlurRadius,"; Unsharp mask radius =",unsharpMaskRadius,"/",maskWeight,"; Auto Threshold Method =",autoThresholdMethod,"\nMinumum object size =",minObjectSize,"; Maximum object size =",maxObjectSize);
+							}
+						run("Duplicate...", "title=" + segmentationImage);
+						if (gaussianBlurRadius > 0) run("Gaussian Blur...", "sigma=" + gaussianBlurRadius);
+						if (rollingBallRadius > 0) run("Subtract Background...", "rolling=" + rollingBallRadius);					
+						if (unsharpMaskRadius > 0) run("Unsharp Mask...", "radius=" + unsharpMaskRadius + " mask=" + maskWeight);
+						if (indexOf(ROIpixelsForSegmentation, "ROI_only") >= 0) {
+							selectWindow(segmentationImage);
+							roiManager("Select", 0);
+							run("Restore Selection");
+							run("Create Mask");
+							ROImaskImage = getTitle();
+							run("Divide...", "value=255");
+							imageCalculator("Multiply create", segmentationImage, ROImaskImage);
+							segmentationImageROI = getTitle();
+							}
+						if (autoThresholdMontage) {
+							run("Auto Threshold", "method=[Try all] ignore_black ignore_white white");	
+							montageImage = getTitle();
+							waitForUser("'OK' to continue... (back to dialog)");
+							}
+						if (isOpen(montageImage)) close(montageImage);
+						if (isOpen(ROImaskImage)) close(ROImaskImage);
+						if (isOpen(segmentationImageROI)) close(segmentationImageROI);
+						} while (autoThresholdMontage);
+					selectWindow(segmentationImage);
+					run("Auto Threshold", "method=" + autoThresholdMethod + " ignore_black ignore_white white");
+					run("Watershed");
+					roiManager("Select", 0);
+					run("Analyze Particles...", "size=" + minObjectSize + "-" + maxObjectSize + " circularity=0.00-1.00 show=[Bare Outlines] include add");
+					rename("Segmentation outline");
+					run("Invert");
+					close(segmentationImage);
+					roiManager("save", outputPath + substring(fileName, 0, lengthOf(fileName)-4)  + "_ROIsetNew.zip");
+					}
+				//now analyse ROI image
+				selectWindow(fileName);
+				run("Select None");
+  				run("Clear Results");
+				//setBatchMode(true);
+				selectWindow(fileName);
+				for (i=0; i < roiManager("count"); i++) {  //measure segmentation channel
+      				roiManager("Select", i);
 					roiManager("Measure");
 					}
-			//set contrast for RGB
-			run("Select None");
-			resetMinAndMax();
-			run("Enhance Contrast", "saturated=2");							
-			run("8-bit");
-			//run("Merge Channels...", "c2=[Segmentation outline] c4=" + fileName + " c5=[ROI outline]");
-			run("Merge Channels...", "c1=[Segmentation outline] c2=" + fileName + " c5=[ROI outline]");
-			//close("RGB");  //composite
-			//selectWindow("RGB (RGB)");
-			fileNameRGB = substring(fileName, 0, lengthOf(fileName)-4) + "_manualRGBoutlines" + ".png";	
-			saveAs("PNG", outputPath + fileNameRGB);
-			print("Saved file:", fileNameRGB);
-			//now analyse all other channels
-			for (currentChannel = 2; currentChannel <= lengthOf(channelTagList); currentChannel++) {  //if other channels show be quantified as well	
-				channelFileName = substring(fileName,0,indexOf(fileName, segmentationChannelTag)) + channelTagList[currentChannel - 1] + substring(exampleFileName, lengthOf(exampleFileName) - 9,lengthOf(exampleFileName)); 
-				//to log window
-				print("#",currentWell,", well:", wellList[currentWell], ", file:", channelFileName);
-				if (File.exists(inputPath + channelFileName)) {
-					open(inputPath + channelFileName);	
-					for (i=0; i < roiManager("count"); i++) {
-      						roiManager("Select", i);
-						roiManager("Measure");
+				//set contrast for RGB
+				run("Select None");
+				resetMinAndMax();
+				run("Enhance Contrast", "saturated=2");							
+				run("8-bit");
+				//run("Merge Channels...", "c2=[Segmentation outline] c4=" + fileName + " c5=[ROI outline]");
+				run("Merge Channels...", "c1=[Segmentation outline] c2=" + fileName + " c5=[ROI outline]");
+				//close("RGB");  //composite
+				//selectWindow("RGB (RGB)");
+				fileNameRGB = substring(fileName, 0, lengthOf(fileName)-4) + "_manualRGBoutlines" + ".png";	
+				saveAs("PNG", outputPath + fileNameRGB);
+				print("Saved file:", fileNameRGB);
+				//now analyse all other channels
+				for (currentChannel = 2; currentChannel <= lengthOf(channelTagList); currentChannel++) {  //if other channels show be quantified as well	
+					channelFileName = substring(fileName,0,indexOf(fileName, segmentationChannelTag)) + channelTagList[currentChannel - 1] + substring(exampleFileName, lengthOf(exampleFileName) - 9,lengthOf(exampleFileName)); 
+					//to log window
+					print("#",currentWell,", well:", wellList[currentWell], ", file:", channelFileName);
+					if (File.exists(inputPath + channelFileName)) {
+						open(inputPath + channelFileName);	
+						for (i=0; i < roiManager("count"); i++) {
+   							roiManager("Select", i);
+							roiManager("Measure");
+							}
+						} else {
+						printText = "File not found:\n" + channelFileName + "\nnot found in folder: " + inputPath;
+						print(printText);
 						}
-					} else {
-					printText = "File not found:\n" + channelFileName + "\nnot found in folder: " + inputPath;
-					print(printText);
+					if (isOpen(channelFileName)) close(channelFileName);
+					}   				
+				saveAs("Results", outputPath + substring(fileName, 0, lengthOf(fileName)-4) + "_manualROI_HSCcount.txt");
+				updateResults();
+				setBatchMode(false);
+				if (checkControlImage && manualMode) { //check manually segmentation
+					selectWindow(fileNameRGB);
+					setTool("zoom");
+					waitForUser;
 					}
-				if (isOpen(channelFileName)) close(channelFileName);
-				}   				
-			saveAs("Results", outputPath + substring(fileName, 0, lengthOf(fileName)-4) + "_manualROI_HSCcount.txt");
-			updateResults();
-			setBatchMode(false);
-			if (checkControlImage && manualMode) { //check manually segmentation
-				selectWindow(fileNameRGB);
-				setTool("zoom");
-				waitForUser;
+				if (isOpen(fileNameRGB)) close(fileNameRGB);
+				run("Clear Results");
 				}
-			if (isOpen(fileNameRGB)) close(fileNameRGB);
-			run("Clear Results");
+			} else {
+			close(imageTitle);
 			}
-		} else {
-		close(imageTitle);
+		selectWindow("Log");  //save temp log
+		saveAs("Text", outputPath + "Log_temp_" + tempLogFileNumber + ".txt");
 		}
-	selectWindow("Log");  //save temp log
-	saveAs("Text", outputPath + "Log_temp_" + tempLogFileNumber + ".txt");
-	}
+	}	
 //print current time to Log window and save log
 getDateAndTime(year, month, dayOfWeek, dayOfMonth, hour, minute, second, msec); month++;
 print("Macro executed successfully.\nEnd:",year+"-"+month+"-"+dayOfMonth+", "+hour+"-"+minute+"-"+second);
@@ -409,4 +412,3 @@ Array.show(fileList);
 exit("No image files found!?" + "\n " + " \n" +"Check image list!");
 }
 ////////////////////////////////////////   E N D    O F    M A C R O   ////////////////////////////
-
