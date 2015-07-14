@@ -64,7 +64,7 @@ for (i=0; i < fileListFunction.length; i++) {
 	if ((File.separator == "\\") && (endsWith(fileListFunction[i], "/"))) fileListFunction[i] = replace(fileListFunction[i],"/",File.separator); //fix windows/Fiji File.separator bug
 	if (endsWith(fileListFunction[i], File.separator)) {   //if it is a folder
 		returnedFileListTemp = newArray(0);
-		returnedFileListTemp = getFileListSubfolder(inputPathFunction + fileListFunction[i]);
+		returnedFileListTemp = getFileListSubfolder(inputPathFunction + fileListFunction[i],displayList);
 		returnedFileList = Array.concat(returnedFileList, returnedFileListTemp);
 		} else {  									//if it is a file
 		returnedFileList = Array.concat(returnedFileList, inputPathFunction + fileListFunction[i]);
@@ -149,6 +149,14 @@ if (displayList) {Array.show("Found folders",returnedFileList);}
 return returnedFileList;
 }
 
+//function returns a number in specific string format, e.g 2.5 => 02.500
+//example: myStringNumber = getNumberToString(2.5, 3, 6);
+function getNumberToString(number, decimalPlaces, lengthNumberString) {
+numberString = "000000000000" + toString(number, decimalPlaces);  //convert to number to string and add zeros in the front
+numberString = substring(numberString, lengthOf(numberString) - lengthNumberString, lengthOf(numberString)); //shorten string to lengthNumberString
+return numberString;
+}
+
 //function returnes the unique values of an array in alphabetical order
 //example: myUniqueValues = getUniqueArrayValues(myList, true);
 function getUniqueArrayValues(inputArray, displayList) {
@@ -195,12 +203,36 @@ if (displayList) {Array.show("List of " + returnedChannelList.length + " unique 
 return returnedChannelList;
 }
 
-//function returnes the unique well files (all fields of all wells, e.g. G10_T0001F001) of an array of CV7000 files
-//example: myUniqueWellFileds = getUniqueWellFieldListCV7000(myList, true);
+//function returnes the unique fields (all fields of all wells, e.g. F001, F002,...) of an array of CV7000 files
+//example: myUniqueFields = getUniqueFieldListCV7000(myList, true);
+function getUniqueFieldListCV7000(inputArray, displayList) {
+currentField = substring(inputArray[0],lastIndexOf(inputArray[0],"_T00")+6,lastIndexOf(inputArray[0],"_T00")+10);   //first field found
+returnedFieldList = newArray(currentField);     //this list stores all unique fields found and is returned at the end of the function
+for (i = 0; i < inputArray.length; i++) {
+	j = 0;									//counter for returned field list
+	valueUnique = true;						//as long as value was not found in array of unique values
+	while (valueUnique && (returnedFieldList.length > j)) {   //as long as value was not found in array of unique values and end of array is not reached
+		currentField = substring(inputArray[i], lastIndexOf(inputArray[i],"_T00")+6, lastIndexOf(inputArray[i],"_T00")+10);
+		if(returnedFieldList[j] == currentField) {
+			valueUnique = false;			//if value was found in array of unique values stop while loop
+			} else {
+			j++;
+			}
+		}  //end while
+	if (valueUnique) returnedFieldList = Array.concat(returnedFieldList, currentField);  //if value was not found in array of unique values add it to the end of the array of unique values
+	}
+print(returnedFieldList.length + " fields found."); 
+Array.sort(returnedFieldList);
+if (displayList) {Array.show("List of " + returnedFieldList.length + " unique fields", returnedFieldList);}	
+return returnedFieldList;
+}
+
+//function returns the unique well fields (all fields of all wells, e.g. G10_T0001F001) of an array of CV7000 files
+//example: myUniqueWellFields = getUniqueWellFieldListCV7000(myList, true);
 function getUniqueWellFieldListCV7000(inputArray, displayList) {
 currentWellField = substring(inputArray[0],lastIndexOf(inputArray[0],"_T00")-3,lastIndexOf(inputArray[0],"_T00")+10);   //first well field found
-returnedWellFieldList = newArray(currentWellField);     //this list stores all unique wells fields found and is returned at the end of the function
-for (i = 1; i < inputArray.length; i++) {
+returnedWellFieldList = newArray(currentWellField);     //this list stores all unique well fields found and is returned at the end of the function
+for (i = 0; i < inputArray.length; i++) {
 	j = 0;									//counter for returned well field list
 	valueUnique = true;						//as long as value was not found in array of unique values
 	while (valueUnique && (returnedWellFieldList.length > j)) {   //as long as value was not found in array of unique values and end of array is not reached
@@ -213,7 +245,7 @@ for (i = 1; i < inputArray.length; i++) {
 		}  //end while
 	if (valueUnique) returnedWellFieldList = Array.concat(returnedWellFieldList, currentWellField);  //if value was not found in array of unique values add it to the end of the array of unique values
 	}
-print(returnedWellFieldList.length + " wells fiels found."); 
+print(returnedWellFieldList.length + " wells fields found."); 
 Array.sort(returnedWellFieldList);
 if (displayList) {Array.show("List of " + returnedWellFieldList.length + " unique well fields", returnedWellFieldList);}	
 return returnedWellFieldList;
@@ -241,6 +273,15 @@ print(returnedWellList.length + " wells found.");
 Array.sort(returnedWellList);
 if (displayList) {Array.show("List of " + returnedWellList.length + " unique wells", returnedWellList);}	
 return returnedWellList;
+}
+
+//function saves the log window in the given path
+//example: saveLog("C:\\Temp\\Log_temp.txt");
+function saveLog(logPath) {
+if (nImages > 0) currentWindow = getTitle();
+selectWindow("Log");
+saveAs("Text", logPath);
+if (nImages > 0) selectWindow(currentWindow);
 }
 
 //function opens a dialog to set text list for filtering a list

@@ -8,7 +8,7 @@ for (i=0; i < fileListFunction.length; i++) {
 	if ((File.separator == "\\") && (endsWith(fileListFunction[i], "/"))) fileListFunction[i] = replace(fileListFunction[i],"/",File.separator); //fix windows/Fiji File.separator bug
 	if (endsWith(fileListFunction[i], File.separator)) {   //if it is a folder
 		returnedFileListTemp = newArray(0);
-		returnedFileListTemp = getFileListSubfolder(inputPathFunction + fileListFunction[i]);
+		returnedFileListTemp = getFileListSubfolder(inputPathFunction + fileListFunction[i],displayList);
 		returnedFileList = Array.concat(returnedFileList, returnedFileListTemp);
 		} else {  									//if it is a file
 		returnedFileList = Array.concat(returnedFileList, inputPathFunction + fileListFunction[i]);
