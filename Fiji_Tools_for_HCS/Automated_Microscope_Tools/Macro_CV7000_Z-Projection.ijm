@@ -18,7 +18,7 @@ macroHtml = "<html>"
 //print macro name and current time to Log window
 getDateAndTime(year, month, dayOfWeek, dayOfMonth, hour, minute, second, msec); month++;
 print("\\Clear");
-print(macroName,"\nStart:",year+"-"+month+"	-"+dayOfMonth+", h"+hour+"-m"+minute+"-s"+second);
+print(macroName,"\nStart:",year + "-" + month + "-" + dayOfMonth + ", h" + hour + "-m" + minute + "-s" + second);
 print(macroHelpURL);
 
 //start macro
@@ -51,15 +51,6 @@ run("Close All");
 batchMode = false;
 availableProjectionTerms = newArray("Max Intensity", "Sum Slices", "Average Intensity", "Min Intensity", "Standard Deviation", "Median");
 
-//set projection type
-Dialog.create("Set projection type");
-Dialog.addChoice("Projection:", availableProjectionTerms);	//set number of images in one row
-Dialog.addCheckbox("Set batch mode (hide images)?", batchMode);	//if checke no images will be displayed
-Dialog.show();
-projectionType = Dialog.getChoice();
-batchMode = Dialog.getCheckbox();
-print("Selected projection type:", projectionType);
-
 //set array variables
 var fileExtension = ".tif";                                                  //pre-definition of extension
 var filterStrings = newArray("back","","");                                      //pre-definition of strings to filter
@@ -83,11 +74,28 @@ wellFieldList = getUniqueWellFieldListCV7000(fileList, displayFileList);
 fieldList = getUniqueFieldListCV7000(fileList, displayFileList);
 channelList = getUniqueChannelListCV7000(fileList, displayFileList);
 print(wellList.length, "wells found\n", wellFieldList.length, "well x fields found\n", fieldList.length, "fields found\n", channelList.length, "channels found\n");
+stackSize = fileList.length / wellFieldList.length / channelList.length;
+print("Assuming stacks with ", stackSize, "planes. Please check if this is correct!");
+
+//set projection type
+Dialog.create("Set projection type");
+Dialog.addChoice("Projection:", availableProjectionTerms);	//set number of images in one row
+Dialog.addNumber("Lowest plane:", 1);
+Dialog.addNumber("Highest plane:", stackSize);
+Dialog.addCheckbox("Set batch mode (hide images)?", batchMode);	//if checke no images will be displayed
+Dialog.show();
+projectionType = Dialog.getChoice();
+Zstart = Dialog.getNumber();
+Zstop = Dialog.getNumber();
+batchMode = Dialog.getCheckbox();
+print("Selected projection type:", projectionType, "starting from plane", Zstart, "until plane",Zstop);
+
 print("===== starting processing.... =====");
 setBatchMode(batchMode);
 
 //go through all files
 for (currentWellField = 0; currentWellField < wellFieldList.length; currentWellField++) {   // well by well
+print("well-field (" + (currentWellField + 1) + "/" + wellFieldList.length + ") ...");  //to log window
 	for (currentChannel = 0; currentChannel < channelList.length; currentChannel++) {  // channel by channel per well
 		//define new filters and filter file list for currentWell and currentChannel
 		filterStrings = newArray(wellFieldList[currentWellField],channelList[currentChannel] + ".tif","");      //pre-definition of strings to filter, add "_" because well strings e.g. A03, L01, C02 can be in file name at other places, e.g ..._A06_T0001F001L01A03Z01C02.tif and ".tif" to excluse well C02 instead of channel C02
@@ -105,7 +113,7 @@ for (currentWellField = 0; currentWellField < wellFieldList.length; currentWellF
 			} //end for all images per channel	
 		//waitForUser("done");	
 		run("Images to Stack", "name=Stack title=[] use");
-		run("Z Project...", "projection=[" + projectionType + "]");
+		run("Z Project...", "start=" + Zstart + " stop=" + Zstop + " projection=[" + projectionType + "]");
 		outputFileName = substring(currentImage,0,lengthOf(currentImage)-9) + "all" + substring(currentImage,lengthOf(currentImage)-7,lengthOf(currentImage));
 		saveAs("Tiff", outputPath + outputFileName);
 		close();  //Z projection
