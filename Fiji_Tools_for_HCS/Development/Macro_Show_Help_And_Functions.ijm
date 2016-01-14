@@ -123,7 +123,7 @@ return returnedFileList;
 
 //function filters a list for a certain string (filter)
 //example: myList = getFilteredList(myList, "myText", true);
-function getFilteredList(inputList, filterStringFunction, displayList {
+function getFilteredList(inputList, filterStringFunction, displayList) {
 skippedFilter = 0;	
 returnedList = newArray(0); //this list stores all items of the input list that were found to contain the filter string and is returned at the end of the function
 for (i = 0; i < inputList.length; i++) {
@@ -182,8 +182,12 @@ return outputArray;
 //function returnes the unique channels (e.g. C01) of an array of CV7000 files
 //example: myUniqueChannels = getUniqueChannelListCV7000(myList, true);
 function getUniqueChannelListCV7000(inputArray, displayList) {
+if(inputArray.length < 1) {
+	print("No channels found!");
+	return newArray(0);
+	}
 currentChannel = substring(inputArray[0],lastIndexOf(inputArray[0],".tif")-3,lastIndexOf(inputArray[0],".tif"));   //first channel found
-returnedChannelList = newArray(currentChannel);     //this list stores all unique channels found and is returned at the end of the function
+returnedChannelList = Array.concat(currentChannel);     //this list stores all unique channels found and is returned at the end of the function
 for (i = 1; i < inputArray.length; i++) {
 	j = 0;									//counter for returned channel list
 	valueUnique = true;						//as long as value was not found in array of unique values
@@ -206,8 +210,12 @@ return returnedChannelList;
 //function returnes the unique fields (all fields of all wells, e.g. F001, F002,...) of an array of CV7000 files
 //example: myUniqueFields = getUniqueFieldListCV7000(myList, true);
 function getUniqueFieldListCV7000(inputArray, displayList) {
+if(inputArray.length < 1) {
+	print("No fields found!");
+	return newArray(0);
+	}
 currentField = substring(inputArray[0],lastIndexOf(inputArray[0],"_T00")+6,lastIndexOf(inputArray[0],"_T00")+10);   //first field found
-returnedFieldList = newArray(currentField);     //this list stores all unique fields found and is returned at the end of the function
+returnedFieldList = Array.concat(currentField);     //this list stores all unique fields found and is returned at the end of the function
 for (i = 0; i < inputArray.length; i++) {
 	j = 0;									//counter for returned field list
 	valueUnique = true;						//as long as value was not found in array of unique values
@@ -230,8 +238,12 @@ return returnedFieldList;
 //function returns the unique well fields (all fields of all wells, e.g. G10_T0001F001) of an array of CV7000 files
 //example: myUniqueWellFields = getUniqueWellFieldListCV7000(myList, true);
 function getUniqueWellFieldListCV7000(inputArray, displayList) {
+if(inputArray.length < 1) {
+	print("No well fields found!");
+	return newArray(0);
+	}
 currentWellField = substring(inputArray[0],lastIndexOf(inputArray[0],"_T00")-3,lastIndexOf(inputArray[0],"_T00")+10);   //first well field found
-returnedWellFieldList = newArray(currentWellField);     //this list stores all unique well fields found and is returned at the end of the function
+returnedWellFieldList = Array.concat(currentWellField);     //this list stores all unique well fields found and is returned at the end of the function
 for (i = 0; i < inputArray.length; i++) {
 	j = 0;									//counter for returned well field list
 	valueUnique = true;						//as long as value was not found in array of unique values
@@ -254,8 +266,12 @@ return returnedWellFieldList;
 //function returnes the unique wells of an array of CV7000 files
 //example: myUniqueWells = getUniqueWellListCV7000(myList, true);
 function getUniqueWellListCV7000(inputArray, displayList) {
+if(inputArray.length < 1) {
+	print("No wells found!");
+	return newArray(0);
+	}
 currentWell = substring(inputArray[0],lastIndexOf(inputArray[0],"_T00")-3,lastIndexOf(inputArray[0],"_T00"));   //first well found
-returnedWellList = newArray(currentWell);     //this list stores all unique wells found and is returned at the end of the function
+returnedWellList = Array.concat(currentWell);     //this list stores all unique wells found and is returned at the end of the function
 for (i = 1; i < inputArray.length; i++) {
 	j = 0;									//counter for returned well list
 	valueUnique = true;						//as long as value was not found in array of unique values
