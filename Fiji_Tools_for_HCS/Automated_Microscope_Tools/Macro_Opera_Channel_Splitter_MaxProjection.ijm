@@ -4,7 +4,7 @@ macroShortDescription = "This macro splits channels from Opera microscope .flex 
 macroDescription = "This macro splits up to 5 channels per field acquired with Opera automated microscope and saves individual .tif." +
 	"\nIf channels have multiple planes, a maximum Z-projection per channel is performed. Define channel tags for .tif." +
 	"\nImage order: e.g. Ch1-z1, Ch1-z2, Ch1-z3, Ch2-z1, Ch2-z2, Ch2-z3, Ch3-z1, ...";
-macroRelease = "first release 29-08-2014 by Marc Bickle and Martin Stöter (stoeter(at)mpi-cbg.de)";
+macroRelease = "second release 15-09-2015 by Marc Bickle and Martin Stöter (stoeter(at)mpi-cbg.de)";
 macroHelpURL = "http://idisk-srv1.mpi-cbg.de/knime/FijiUpdate/TDS%20macros/" + macroName + ".htm";
 macroHtml = "<html>" 
 	+"<font color=red>" + macroName + "/n" + macroRelease + "</font> <br>"
@@ -68,6 +68,7 @@ for (currentChannel = 1; currentChannel <= numberOfChannels; currentChannel++) {
 	Dialog.addString("Channel " + currentChannel + ", tag: ", imageSuffix[currentChannel-1]);	
 }
 Dialog.addCheckbox("Set batch mode (hide images)?", batchMode);	//if checke no images will be displayed
+Dialog.addCheckbox("Merge channels as stack?", batchMode);	//if checke no images will be displayed
 Dialog.show();
 for (currentChannel = 1; currentChannel <= numberOfChannels; currentChannel++) {
 	planesPerChannelArray[currentChannel-1] = Dialog.getNumber();
@@ -75,6 +76,9 @@ for (currentChannel = 1; currentChannel <= numberOfChannels; currentChannel++) {
 	}
 for (currentChannel = 1; currentChannel <= numberOfChannels; currentChannel++) imageSuffix[currentChannel-1] = Dialog.getString();
 batchMode = Dialog.getCheckbox();
+mergeChannels = Dialog.getCheckbox();
+
+imageZmaxName = newArray(numberOfChannels);
 
 setBatchMode(batchMode);
 //go through all file
@@ -101,11 +105,21 @@ for (currentFile = 0; currentFile < fileList.length; currentFile++) {
 					run("Make Substack...", "slices=" + ((currentField-1) * imageNumberPerField + firstImageInChannel) + "-" + ((currentField-1) * imageNumberPerField + lastImageInChannel));
 					subStackID = getTitle();
 					if (planesPerChannelArray[currentChannel-1] > 1) run("Z Project...", "start=1 stop=" + planesPerChannelArray[currentChannel-1] + " projection=[Max Intensity]");
-					saveAs("Tiff", outputPath + substring(fileList[currentFile],0,9) + "_f" + currentField + "_" + imageSuffix[currentChannel-1] + ".tif");	
-					print("saved substack (" + ((currentField-1) * imageNumberPerField + firstImageInChannel) + "-" + ((currentField-1) * imageNumberPerField + lastImageInChannel) + "):", substring(fileList[currentFile],0,9) + "_f" + currentField + "_" + imageSuffix[currentChannel-1] + ".tif");
-					close();			//Z-projection
+					if (mergeChannels) {
+						imageZmaxName[currentChannel - 1] = getTitle();
+						} else {
+						saveAs("Tiff", outputPath + substring(fileList[currentFile],0,9) + "_f" + currentField + "_" + imageSuffix[currentChannel-1] + ".tif");	
+						print("saved substack (" + ((currentField-1) * imageNumberPerField + firstImageInChannel) + "-" + ((currentField-1) * imageNumberPerField + lastImageInChannel) + "):", substring(fileList[currentFile],0,9) + "_f" + currentField + "_" + imageSuffix[currentChannel-1] + ".tif");
+						close();			//Z-projection
+						}
 					close(subStackID);	//substack
 					firstImageInChannel = firstImageInChannel + planesPerChannelArray[currentChannel-1];
+					}
+				if (mergeChannels) { //join channels to stack and save 
+					run("Images to Stack", "name=Stack title=[] use");	
+					saveAs("Tiff", outputPath + substring(fileList[currentFile],0,9) + "-f" + currentField + "-allCh.tif");	
+					print("saved substack (" + ((currentField-1) * imageNumberPerField + firstImageInChannel) + "-" + ((currentField-1) * imageNumberPerField + lastImageInChannel) + "):", substring(fileList[currentFile],0,9) + "-f" + currentField + "-allCh.tif");
+					close();			//channel stack
 					}
 				}
 			close(fileList[currentFile]);	//.flex
