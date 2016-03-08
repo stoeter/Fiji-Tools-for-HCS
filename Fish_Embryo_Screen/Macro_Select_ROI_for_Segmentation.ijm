@@ -5,7 +5,7 @@ macroDescription = "This macro loads images for the user to select ROIs for segm
 	"\nOption to count object manually. The user can manually draw/select an ROI, which is saved to a .zip file." +
 	"\nROIs can be loaded and applied on images with another macro." + 
 	"\nEach image can be manually annotated/flagged and all data will be stored in a log file.";
-release = "thitd release 14-1002-2014 by Martin Stöter (stoeter(at)mpi-cbg.de)";
+release = "fourth release 01-03-2016 by Martin Stöter (stoeter(at)mpi-cbg.de)";
 html = "<html>"
 	+"<font color=red>" + macroName + "/n" + release + "</font> <br>"
 	+"<font color=black>Check for help on this web page:</font> <br>"
@@ -91,7 +91,7 @@ for (currentWell = startAtWellNumber-1; currentWell < wellList.length; currentWe
 	if (!(nImages > 0)) print("well:", wellList[currentWell], ", file:", fileName, "could not be opened!"); //if no file was found
 		else {
 		//to log window
-		print("well:", wellList[currentWell], ", file:", fileName);
+		print("well (" + (currentWell + 1) + "/" + (wellList.length) + "):", wellList[currentWell], ", file:", fileName);
 		imageTitle = getTitle();
 		heightPixel = getHeight();
 		widthPixel = getWidth();
