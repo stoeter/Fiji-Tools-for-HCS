@@ -3,7 +3,7 @@ macroName = "Macro_Opera_Stack_Montage_for_Fish";
 macroDescription = "This macro loads Opera images (.flex) and saves the montage of subsequent fields as .tif" +
 	"\nThe macro can handle stacks and up to 4 channels" +
 	"\nThis macro does optionally an autofluorescence substraction (Ch2-Ch3).";
-release = "second release 14-10-2014 by Martin Stöter (stoeter(at)mpi-cbg.de)";
+release = "third release 29-02-2016 by Martin Stöter (stoeter(at)mpi-cbg.de)";
 html = "<html>"
 	+"<font color=red>" + macroName + "/n" + release + "</font> <br>"
 	+"<font color=black>Check for help on this web page:</font> <br>"
@@ -15,32 +15,44 @@ getDateAndTime(year, month, dayOfWeek, dayOfMonth, hour, minute, second, msec); 
 print("\\Clear");
 print(macroName,"\nStart:",year+"-"+month+"-"+dayOfMonth+", "+hour+"-"+minute+"-"+second);
 
+//configure
+run("Set Measurements...", "area mean standard min centroid center shape integrated median display redirect=None decimal=3");
+run("Input/Output...", "jpeg=95 gif=-1 file=.txt copy_column copy_row save_column save_row");	
+run("Options...", "iterations=1 count=1 black edm=Overwrite");
+run("Close All");
+
 //choose folders
 inputPath = getDirectory("Choose image folder... ");
 outputPath = getDirectory("Choose result image folder... or create a folder");
 printPaths = "inputPath = \"" + inputPath + "\";\noutputPath = \"" + outputPath + "\";";
 print(printPaths);
 
+//set log file number
+tempLogFileNumber = 1;
+if(outputPath != "not available") while (File.exists(outputPath + "Log_temp_" + tempLogFileNumber +".txt")) tempLogFileNumber ++; //find last tempLog file to prevent overwriting of log 
+
+////////////////////////////////        M A C R O   C O D E         /////////////////////////////// 
+
 resultSubfolders = newArray("rawtif", "Zmax", "RGB");  //folder names where to store result images
 Array.concat(resultSubfolders,File.separator);		   //add OS specific fiel separator
 for (i = 0; i < resultSubfolders.length; i++) {
 	File.makeDirectory(outputPath + resultSubfolders[i]);
-	if (!File.exists(outputPath + resultSubfolders[i]))
-      exit("Unable to create directory");
-}
+	if (!File.exists(outputPath + resultSubfolders[i])) exit("Unable to create directory");
+	}
 	
 availableImageFormats = newArray("Opera (.flex)");  //image formats to choose
 Dialog.create("Conditions");
 Dialog.addChoice("Image format:", availableImageFormats);
-Dialog.addNumber("Zplanes", 8);
+Dialog.addNumber("Zplanes", 40);
 Dialog.addNumber("Fields:", 4);
 Dialog.addNumber("Channels:", 3);
-Dialog.addNumber("Rows of Montage:", 2);
-Dialog.addNumber("Columns of Montage:", 2);
+Dialog.addNumber("Rows of Montage:", 4);
+Dialog.addNumber("Columns of Montage:", 1);
 Dialog.addCheckbox("Do background subtraction?", true);
 Dialog.addCheckbox("Rotate left?", true);
 Dialog.addCheckbox("Subtract auto-fluorescence image?", true);
 Dialog.addCheckbox("Save RGB?", true);
+Dialog.addCheckbox("Hide images?", true);
 Dialog.show();
 imageFormat = Dialog.getChoice();
 numberOfZplanes = Dialog.getNumber();
@@ -52,9 +64,10 @@ bkgCorrection = Dialog.getCheckbox();
 rotate = Dialog.getCheckbox();
 subtractImage = Dialog.getCheckbox();
 saveRGB = Dialog.getCheckbox();
+batchMode = Dialog.getCheckbox();
 //to log
 print("Zplanes", numberOfZplanes, ", Fields:", numberOfFields, ", Channels:", numberOfChannels, "\nRows of Montage:", montageRow, ", Columns of Montage:", montageColumn, "\nDo background substraction?", 
-	bkgCorrection,  ", Rotate left?", rotate, ", Subtract auto-fluorescence image?", subtractImage, ", Saves RGB?", saveRGB);
+	bkgCorrection,  ", Rotate left?", rotate, ", Subtract auto-fluorescence image?", subtractImage, ", Saves RGB?", saveRGB, ", Display images?", batchMode);
 
 //set array variables for RGB merge
 availableChannels = newArray("*None*", "Channel_0", "Channel_1", "Channel_2", "Channel_3");  //array of color selection for channel 1-4
@@ -72,7 +85,7 @@ if (bkgCorrection) {
 		}
 	}
 
-availableChannelNumber = newArray(0,1,2,3); //array numbers for channel 1-4
+availableChannelNumber = newArray("0","1","2","3"); //array numbers for channel 1-4
 availableChannelNumber = Array.trim(availableChannelNumber,numberOfChannels);
 availableChannels = Array.trim(availableChannels,numberOfChannels+1);
 //set variables for channel subtraction
@@ -81,15 +94,19 @@ if (subtractImage) {
 	Dialog.addChoice("Channel containing auto-fluorescence:", availableChannelNumber, "2");
 	Dialog.addChoice("Channel from which to subtract auto-fluorescence:", availableChannelNumber, "1");
 	Dialog.show();
-	afChannelNumber = Dialog.getChoice();
-	afSubtractionChannelNumber = Dialog.getChoice();
+	afChannelNumber = Dialog.getChoice();  //string
+	afSubtractionChannelNumber = Dialog.getChoice();  //string
+	//turn in to integer instead of string
+	afChannelNumber = parseInt(afChannelNumber);  
+	afSubtractionChannelNumber = parseInt(afSubtractionChannelNumber);
 	print("Channel containing auto-fluorescence:", afChannelNumber, "will be subtracted from channel :", afSubtractionChannelNumber);
 	}
+	
 /*set variables for RGB
 if (saveRGB) {
 	Dialog.create("How to merge RGB");
 	for (i = 1; i <= 3; i++) Dialog.addChoice(availableRGBsettings[i], availableChannels, availableChannels[0]);
-	if (subtractImage) availableChannels = Array.concat(availableChannels,"substracted");
+	if (subtractImage) availableChannels = Array.concat(availableChannels,"subtracted");
 	Dialog.show();
 	RGBstring = "";
 	for (i = 1; i <= 3; i++) {
@@ -97,7 +114,7 @@ if (saveRGB) {
 		if (availableRGBsettings[i] != availableChannels[0]) RGBstring = RGBstring + "c" + i + "=MAX_" + availableRGBsettings[i];
 		+ " ";
 	}
-	RGBstring = "c1=tempMAX_" + availableChannels[0 + 1] + " c2=tempMAX_" + availableChannels[1 + 1] + "substracted");
+	RGBstring = "c1=tempMAX_" + availableChannels[0 + 1] + " c2=tempMAX_" + availableChannels[1 + 1] + "subtracted");
 	Dialog.getChoice();
 
 	
@@ -106,22 +123,18 @@ if (saveRGB) {
 	}
 
 	setMinAndMax(8, 200);
-	run("Merge Channels...", "c1=tempMAX_" + availableChannels[0 + 1] + " c2=tempMAX_" + availableChannels[1 + 1] + "substracted");
+	run("Merge Channels...", "c1=tempMAX_" + availableChannels[0 + 1] + " c2=tempMAX_" + availableChannels[1 + 1] + "subtracted");
 */
 	
 //list files in directory
 fileList = getFileList(inputPath);
 l = fileList.length;
-//setBatchMode(true);
 
-//configure
-run("Set Measurements...", "area mean standard min centroid center shape integrated median display redirect=None decimal=3");
-run("Input/Output...", "jpeg=95 gif=-1 file=.txt copy_column copy_row save_column save_row");	
-run("Options...", "iterations=1 count=1 black edm=Overwrite");
-run("Close All");
-
-wellList = getAllWellsFuntion(fileList, true);
+wellList = getAllWellsFuntion(fileList, true);
 exampleFileName = getImageFileExample(fileList);
+
+print("============================  start processing....  ==================================");  
+setBatchMode(batchMode);
 
 //now load well-field by well-field and merge to RGB
 for (currentWell = 0; currentWell < wellList.length; currentWell++) { //currentWell < wellList.length; 26-27
@@ -134,7 +147,7 @@ for (currentWell = 0; currentWell < wellList.length; currentWell++) { //currentW
 	if (!(nImages>0)) print("well:", wellList[currentWell], ", file:", fileName, "could not be opened!"); //if no file was found
 		else {
 		//to log window
-		print("well:", wellList[currentWell], ", file:", fileName);                         
+		print("well (" + (currentWell + 1) + "/" + (wellList.length) + "):", wellList[currentWell], ", file:", fileName);                         
 		imageTitle = getTitle();
 		run("Stack to Hyperstack...", "order=xyczt(default) channels=" + numberOfChannels + " slices=" + numberOfZplanes + " frames=" + numberOfFields + " display=Grayscale");
 		run("Re-order Hyperstack ...", "channels=[Frames (t)] slices=[Slices (z)] frames=[Channels (c)]");
@@ -173,12 +186,12 @@ for (currentWell = 0; currentWell < wellList.length; currentWell++) { //currentW
 		for (currentChannel = 0; currentChannel < numberOfChannels; currentChannel++) {
 			selectWindow(availableChannels[currentChannel + 1]);
 			if (rotate) run("Rotate 90 Degrees Left");
-			saveAs("Tiff", outputPath + resultSubfolders[0] + wellList[currentWell] + "000_Ch" + (currentChannel + 1));
+			saveAs("Tiff", outputPath + resultSubfolders[0] + File.separator + wellList[currentWell] + "000_Ch" + (currentChannel + 1));
 			print("Saved file:", wellList[currentWell] + "000_Ch" + (currentChannel + 1) + ".tif");
 			rename(availableChannels[currentChannel + 1]);
 			if(bkgCorrection) run("Subtract Background...", "rolling=" + (bkgCorrValue[currentChannel]) + " stack");
 			run("Z Project...", "start=1 stop=" + numberOfZplanes + " projection=[Max Intensity]");	
-			saveAs("Tiff", outputPath + resultSubfolders[1] + wellList[currentWell] + "000_Ch" + (currentChannel + 1) + "_Zmax.tif");
+			saveAs("Tiff", outputPath + resultSubfolders[1] + File.separator + wellList[currentWell] + "000_Ch" + (currentChannel + 1) + "_Zmax.tif");
 			rename("MAX_" + availableChannels[currentChannel + 1]);
 			print("Saved file:", wellList[currentWell] + "000_Ch" + (currentChannel + 1) + "_Zmax.tif");
 			//close();
@@ -195,15 +208,15 @@ for (currentWell = 0; currentWell < wellList.length; currentWell++) { //currentW
 			if(bkgCorrection) run("Subtract Background...", "rolling=" + (bkgCorrValue[afSubtractionChannelNumber + 1]) + " stack");
 			run("Z Project...", "start=1 stop=" + numberOfZplanes + " projection=[Max Intensity]");
 			//save & tidy up
-			saveAs("Tiff", outputPath + resultSubfolders[1] + wellList[currentWell] + "000_Ch" + (afSubtractionChannelNumber + 1) + "_subtracted_Zmax.tif");  //Zmax
+			saveAs("Tiff", outputPath + resultSubfolders[1] + File.separator + wellList[currentWell] + "000_Ch" + (afSubtractionChannelNumber + 1) + "_subtracted_Zmax.tif");  //Zmax
 			rename("MAX_" + availableChannels[afSubtractionChannelNumber + 1] + "subtracted");
-			print("Saved file:", wellList[currentWell] + "000_Ch" + (1 + 1) + "_subtracted_Zmax.tif");
+			print("Saved file:", wellList[currentWell] + "000_Ch" + (afSubtractionChannelNumber + 1) + "_subtracted_Zmax.tif");
 			run("Enhance Contrast", "saturated=0.35");
 			run("8-bit");
 			selectWindow(availableChannels[afChannelNumber + 1] + "blurred");
 			close();
 			selectWindow(availableChannels[afSubtractionChannelNumber + 1] + "subtracted");
-			saveAs("Tiff", outputPath + resultSubfolders[0] + wellList[currentWell] + "000_Ch" + (afSubtractionChannelNumber + 1) + "_subtracted.tif"); //rawtif
+			saveAs("Tiff", outputPath + resultSubfolders[0] + File.separator + wellList[currentWell] + "000_Ch" + (afSubtractionChannelNumber + 1) + "_subtracted.tif"); //rawtif
 			print("Saved file:", wellList[currentWell] + "000_Ch" + (afSubtractionChannelNumber + 1) + "_subtracted.tif");
 			close();
 			selectWindow("MAX_" + availableChannels[afSubtractionChannelNumber + 1] + "subtracted");
@@ -220,25 +233,29 @@ for (currentWell = 0; currentWell < wellList.length; currentWell++) { //currentW
 			//getStatistics(area, mean, min, max, std, histogram);
 			//print(area, mean, min, max, std);
 			setMinAndMax(4, 100);
-			selectWindow("MAX_" + availableChannels[afSubtractionChannelNumber + 1] + "substracted");
+			selectWindow("MAX_" + availableChannels[afSubtractionChannelNumber + 1] + "subtracted");
 			setMinAndMax(8, 200);
-			if (saveRGB) RGBmergeString = "c1=MAX_" + availableChannels[0 + 1] + " c2=MAX_" + availableChannels[afSubtractionChannelNumber + 1] + "substracted");
-				else RGBmergeString = "c1=MAX_" + availableChannels[0 + 1] + " c2=MAX_" + availableChannels[afSubtractionChannelNumber + 1]);
+			if (saveRGB) RGBmergeString = "c1=MAX_" + availableChannels[0 + 1] + " c2=MAX_" + availableChannels[afSubtractionChannelNumber + 1] + "subtracted";
+				else RGBmergeString = "c1=MAX_" + availableChannels[0 + 1] + " c2=MAX_" + availableChannels[afSubtractionChannelNumber + 1];
 			run("Merge Channels...", RGBmergeString);
-			saveAs("PNG", outputPath + resultSubfolders[2] + wellList[currentWell] + "000_RGB.tif");
+			saveAs("PNG", outputPath + resultSubfolders[2] + File.separator + wellList[currentWell] + "000_RGB.tif");
 			}
 		run("Close All");	
+		saveLog(outputPath + "Log_temp_" + tempLogFileNumber + ".txt");
 		}
 	}		//file open was successful
 	
 //print current time to Log window and save log
 getDateAndTime(year, month, dayOfWeek, dayOfMonth, hour, minute, second, msec); month++;
-print("Macro executed successfully.\nEnd:",year+"-"+month+"-"+dayOfMonth+", "+hour+"-"+minute+"-"+second);
+print("Macro executed successfully.\nEnd:",year+"-"+month+"-"+dayOfMonth+", h"+hour+"-m"+minute+"-s"+second);
 selectWindow("Log");
-saveAs("Text", outputPath + "Log_"+year+"-"+month+"-"+dayOfMonth+", "+hour+"-"+minute+"-"+second+".txt");
+if(outputPath != "not available") {
+	saveAs("Text", outputPath + "Log_"+year+"-"+month+"-"+dayOfMonth+", h"+hour+"-m"+minute+"-s"+second+".txt");
+	if (File.exists(outputPath + "Log_temp_" + tempLogFileNumber +".txt")) File.delete(outputPath + "Log_temp_" + tempLogFileNumber + ".txt");  //delete current tempLog file 	
+	}
 
 /////////////////////////////////////////////////////////////////////////////////////////////
-////////			F U N C T I O N S				/////////////
+////////		      	F U N C T I O N S			     	/////////////
 /////////////////////////////////////////////////////////////////////////////////////////////
 function getAllWellsFuntion(fileList, closeWindow) {
 //function get all unique wells from a file list
@@ -318,5 +335,14 @@ if (imageFormat == "Opera (.flex)") {
 //show file list and abort macro
 Array.show(fileList);
 exit("No image files found!?" + "\n " + " \n" +"Check image list!");
+}
+
+//function saves the log window in the given path
+//example: saveLog("C:\\Temp\\Log_temp.txt");
+function saveLog(logPath) {
+if (nImages > 0) currentWindow = getTitle();
+selectWindow("Log");
+saveAs("Text", logPath);
+if (nImages > 0) selectWindow(currentWindow);
 }
 ////////////////////////////////////////   E N D    O F    M A C R O   ////////////////////////////
