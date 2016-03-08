@@ -150,8 +150,8 @@ for (currentWell = startAtWellNumber-1; currentWell < wellList.length; currentWe
 	if (imageFormat == "Opera (.tif)") open(inputPath + fileName);
 	if (!(nImages > 0)) print("#",currentWell,", well:", wellList[currentWell], ", file:", fileName, "could not be opened!"); //if no file was found
 		else {
-			//to log window
-		print("#",currentWell,", well:", wellList[currentWell], ", file:", fileName);
+		//to log window
+		print("well (" + (currentWell + 1) + "/" + (wellList.length) + "):", "well:", wellList[currentWell], ", file:", fileName);
 		imageTitle = getTitle();
 		heightPixel = getHeight();
 		widthPixel = getWidth();
