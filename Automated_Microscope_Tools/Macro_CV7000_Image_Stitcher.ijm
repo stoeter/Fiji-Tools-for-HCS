@@ -5,7 +5,7 @@ macroDescription = "This macro reads single CV7000 images of a well as .tif ." +
 	"<br>The chosen folder will be searched for images including subfolders." +
 	"<br>All images and channels of a well are stiched." +
 	"<br>Current restrictions: C01.tif is BF channel, up to 2 fluoresent channels, no choice of color.";
-macroRelease = "fourth release 02-09-2015 by Martin Stoeter (stoeter(at)mpi-cbg.de)";
+macroRelease = "fifth release 21-03-2016 by Martin Stoeter (stoeter(at)mpi-cbg.de)";
 macroHelpURL = "https://github.com/stoeter/Fiji-Tools-for-HCS/wiki/Macro-" + macroName;
 macroHtml = "<html>" 
 	+"<font color=red>" + macroName + "\n" + macroRelease + "</font> <br> <br>"
@@ -82,7 +82,7 @@ run("Close All");
 ////////////////////////////////        M A C R O   C O D E         /////////////////////////////// 
 //set array variables
 var fileExtension = ".tif";                                                  //pre-definition of extension
-var filterStrings = newArray("back","B03","");                                      //pre-definition of strings to filter
+var filterStrings = newArray("back","_A01_","");                                      //pre-definition of strings to filter
 var availableFilterTerms = newArray("no filtering", "include", "exclude");   //dont change this
 var filterTerms = newArray("exclude", "include", "no filtering");  //pre-definition of filter types 
 var displayFileList = false;                                                 //shall array window be shown? 
@@ -107,7 +107,7 @@ Dialog.addCheckbox("Reverse order for first-channel stitching?", reverseOrder);	
 Dialog.addCheckbox("Save merged channels as grey stack?", saveAsGreyStack);	//if checked merged stiched images are saved as grey stack .tif
 Dialog.addCheckbox("Invert brightfield image for .tif?", invertBFforTIF);	//if checked bright field imgage (C01.tif) will be inverted (then dark background).
 Dialog.addCheckbox("Invert brightfield image for .png?", invertBFforPNG);	//if checked bright field imgage (C01.tif) will be inverted (then dark background).
-Dialog.addNumber("Brightfield is channel:", BFchannel);	 //which channel is bright field
+Dialog.addNumber("Brightfield is in RGB channel:", BFchannel);	 //which channel is bright field
 Dialog.addCheckbox("Switch of image display?", batchMode);	//if checked batch mode prevents image display
 Dialog.show();
 substractBackground = Dialog.getCheckbox();
@@ -119,7 +119,7 @@ invertBFforTIF = Dialog.getCheckbox();
 invertBFforPNG = Dialog.getCheckbox();
 BFchannel = Dialog.getNumber();
 batchMode = Dialog.getCheckbox();
-print("subtract background:", substractBackground, "\nblur image:", blurImage, "\nused RGB for stiching:", RGBstitch, "\nreverse order of channel for stiching:", reverseOrder, "\n.tif saved as grey stack:", saveAsGreyStack , "\nbright field image inverted [.tif, .png]:", invertBFforTIF, invertBFforPNG, "\nbatch mode:", batchMode);
+print("subtract background:", substractBackground, "\nblur image:", blurImage, "\nused RGB for stiching:", RGBstitch, "\nreverse order of channel for stiching:", reverseOrder, "\n.tif saved as grey stack:", saveAsGreyStack , "\nbright field image inverted [.tif, .png, RGB channel]:", invertBFforTIF, invertBFforPNG, BFchannel, "\nbatch mode:", batchMode);
 
 //configure stitching algorithm
 stitchGridX = 2;
@@ -159,38 +159,50 @@ wellList = getUniqueWellListCV7000(fileList, displayFileList);
 wellFieldList = getUniqueWellFieldListCV7000(fileList, displayFileList);
 fieldList = getUniqueFieldListCV7000(fileList, displayFileList);
 channelList = getUniqueChannelListCV7000(fileList, displayFileList);
-print("===== starting processing.... =====");
 
 //waitForUser("Do you really want to open " + fileList.length + " files?" + "\n\n" + "Otherwise press 'ESC' and check image list and filter text!");
 setBatchMode(batchMode);
 
 //set variables according to user dialogs
-contrastValueArray = newArray(62000,65535,20,300,20,300,0,100,0,100);  //vector of alternating min-max contrast values => newArray(ch1-min,ch1-max,ch2-min,ch2-max,ch3-min, ...)
+contrastValueArray = newArray(61000,65535,20,800,20,300,0,100,0,100);  //vector of alternating min-max contrast values => newArray(ch1-min,ch1-max,ch2-min,ch2-max,ch3-min, ...)
+fileEndArray = newArray("C01.tif","C02.tif","C03.tif");  //vector of a file endings of individual channels
+channelToRGBArray = newArray(3,2,1);   //vector of colors (RGB channel numbers) assigned to file endings
+bkgValueSubstractionArray = newArray(50,20,20);   //vector of background subtraction values / radia
 if (true) {
 	fileTag = "_RGB";
 	Dialog.create("Set contrast values for RGB merge");
+	Dialog.addMessage("Red = 1, Green = 2, Blue = 3");
 	for (currentChannel = 0; currentChannel < channelList.length; currentChannel++) {
+		Dialog.addMessage("--------------------------------------------");
+		Dialog.addNumber("Color of channel ends with " + fileEndArray[currentChannel] + ":", channelToRGBArray[currentChannel]);	 //which channel is which color in RGB
+		Dialog.addNumber("Background subtraction radius " + channelList[currentChannel] + ":", bkgValueSubstractionArray[currentChannel]);	 //which channel i
 		Dialog.addNumber("Set minimum intensity channel " + channelList[currentChannel] +":", contrastValueArray[currentChannel * 2]);	//set value for min
 		Dialog.addNumber("Set maximum intensity channel " + channelList[currentChannel] +":", contrastValueArray[currentChannel * 2 + 1]);	//set value for max
 		}
 	Dialog.show();
 	for (currentChannel = 0; currentChannel < channelList.length; currentChannel++) {
-		contrastValueArray[currentChannel * 2]  = Dialog.getNumber();
+		channelToRGBArray[currentChannel] = Dialog.getNumber();
+		bkgValueSubstractionArray[currentChannel] = Dialog.getNumber();
+		contrastValueArray[currentChannel * 2] = Dialog.getNumber();
 		contrastValueArray[currentChannel * 2 + 1]  = Dialog.getNumber();
-		print("channel " + channelList[currentChannel] + ": min =", contrastValueArray[currentChannel * 2], "and max =", contrastValueArray[currentChannel * 2 + 1]);  
+		print("channel " + channelList[currentChannel] + ": ends with", fileEndArray[currentChannel], "is assigned to RGB channel", channelToRGBArray[currentChannel] + "; bkg subtraction =", bkgValueSubstractionArray[currentChannel] + ", contrast min =", contrastValueArray[currentChannel * 2], "and max =", contrastValueArray[currentChannel * 2 + 1]);  
 		}
 	} else {
 	fileTag = "_allCh";
 	}
-
+	
+print("===== starting processing.... =====");
 //go through all files
+
 for (currentWell = 0; currentWell < wellList.length; currentWell++) {   // well by well
+	skipWell = false;
 	mergeChannelString = "";
 	for (currentChannel = 0; currentChannel < channelList.length; currentChannel++) {  // channel by channel per well
 		//define new filters and filter file list for currentWell and currentChannel
 		filterStrings = newArray("_" + wellList[currentWell] + "_" ,channelList[currentChannel] + ".tif","");      //pre-definition of strings to filter, add "_" because well strings e.g. A03, L01, C02 can be in file name at other places, e.g ..._A06_T0001F001L01A03Z01C02.tif and ".tif" to excluse well C02 instead of channel C02
 		filterTerms = newArray("include", "include", "no filtering");  //pre-definition of filter types 
 		wellChannelFileList = getFilteredFileList(fileList, false, false);
+		if (wellChannelFileList.length != fieldList.length) skipWell = true;
 		//now open all files (wellChannelFileList) that belong to one wellField in all channels
 		firstImage = "";
 		fileName = "";
@@ -205,9 +217,9 @@ for (currentWell = 0; currentWell < wellList.length; currentWell++) {   // well 
 			//image is open, now apply blur and bkg subtraction to each channel
 			if (blurImage) run("Gaussian Blur...", "sigma=0.80");
 			if (substractBackground) {
-				if (endsWith(wellChannelFileList[currentFile], "C01.tif")) run("Subtract Background...", "rolling=50 light");  //brightfield
-				if (endsWith(wellChannelFileList[currentFile], "C02.tif")) run("Subtract Background...", "rolling=20 stack");
-				if (endsWith(wellChannelFileList[currentFile], "C03.tif")) run("Subtract Background...", "rolling=20 stack");		
+				if (endsWith(wellChannelFileList[currentFile], "C01.tif")) run("Subtract Background...", "rolling=" + bkgValueSubstractionArray[currentChannel] +  " light");  //brightfield
+				if (endsWith(wellChannelFileList[currentFile], "C02.tif")) run("Subtract Background...", "rolling=" + bkgValueSubstractionArray[currentChannel] +  " stack");
+				if (endsWith(wellChannelFileList[currentFile], "C03.tif")) run("Subtract Background...", "rolling=" + bkgValueSubstractionArray[currentChannel] +  " stack");		
 				}
 			//run("Measure"); getStatistics(area, mean, min, max, std, histogram); print(area, mean, min, max, std);
 			//setMinAndMax(contrastValueArray[currentChannel * 2], contrastValueArray[currentChannel * 2 + 1]);
@@ -223,9 +235,9 @@ for (currentWell = 0; currentWell < wellList.length; currentWell++) {   // well 
 				}
 			} //end for all images per channel
 		// all wellFields are open for one channel, now merge and save to RGB or merge stack
-		if (endsWith(firstImage, "C01.tif")) mergeChannelString = mergeChannelString + " c3=" + getTitle();  // blue channel
-			else if (endsWith(firstImage, "C02.tif")) mergeChannelString = mergeChannelString + " c1=" + getTitle();  // red channel
-				else if (endsWith(firstImage, "C03.tif")) mergeChannelString = mergeChannelString + " c2=" + getTitle();  // green channel
+		for (currentRGBChannel = 0; currentRGBChannel < channelList.length; currentRGBChannel++) {  
+			if (endsWith(firstImage, fileEndArray[currentRGBChannel])) mergeChannelString = mergeChannelString + " c" + channelToRGBArray[currentRGBChannel] + "=" + getTitle(); //generate merge string by checking each file end
+			}	
 		if (reverseOrder) run("Reverse");
 		//set contrast
 		setMinAndMax(contrastValueArray[currentChannel * 2], contrastValueArray[currentChannel * 2 + 1]);
@@ -235,68 +247,74 @@ for (currentWell = 0; currentWell < wellList.length; currentWell++) {   // well 
 		print(mergeChannelString);
 		run("Merge Channels...", mergeChannelString + " create");
 		}
+//waitForUser("ok?");		
 	rgbStack = getTitle();
-	for (currentField = 1; currentField <= fieldList.length; currentField++) {
-		selectWindow(rgbStack);
-		if (RGBstitch) {
-			run("Duplicate...", "duplicate slices=" + currentField);
-			run("RGB Color");
-			} else {
-			run("Duplicate...", "duplicate range=" + currentField + "-" + currentField);	
+	if (!skipWell) {
+		for (currentField = 1; currentField <= fieldList.length; currentField++) {
+			selectWindow(rgbStack);
+			if (RGBstitch) {
+				run("Duplicate...", "duplicate slices=" + currentField);
+				run("RGB Color");
+				} else {
+				run("Duplicate...", "duplicate range=" + currentField + "-" + currentField);	
+				}
+			saveAs("Tiff", tempPath + fileName + fileTag + "_f" + getNumberToString(currentField, 0, 2) + ".tif");
+			//if (RGBstitch) close(); //saved RGB tif
+			//close(); //composite
+			while (nImages > 1) close();
+			print("saved temporarily as " + tempPath + fileName + fileTag + "_f" + getNumberToString(currentField, 0, 2) + ".tif");  //to log window
+			saveLog(outputPath + "Log_temp_" + tempLogFileNumber + ".txt");
 			}
-		saveAs("Tiff", tempPath + fileName + fileTag + "_f" + getNumberToString(currentField, 0, 2) + ".tif");
-		//if (RGBstitch) close(); //saved RGB tif
-		//close(); //composite
-		while (nImages > 1) close();
-		print("saved temporarily as " + tempPath + fileName + fileTag + "_f" + getNumberToString(currentField, 0, 2) + ".tif");  //to log window
-		saveLog(outputPath + "Log_temp_" + tempLogFileNumber + ".txt");
-		}
-	selectWindow(rgbStack);
-	close(); //RGB-composite stack	
+		selectWindow(rgbStack);
+		close(); //RGB-composite stack	
 
-	//now run the stiching plugin 
-	// for detail see this weib site: http://fiji.sc/Image_Stitching#Timelapse_alignment_for_Grid.2FCollection_Stitching	
-	run("Grid/Collection stitching", "type=[Grid: row-by-row] order=[Right & Down                ] grid_size_x=" + stitchGridX	+ " grid_size_y=" + stitchGridY	+ " tile_overlap_x=" + stitchOverlapX + " tile_overlap_y=" + stitchOverlapY + "  first_file_index_i=1 directory=" + tempPath + " file_names=" + fileName + fileTag + "_f" + "{ii}.tif" + " output_textfile_name=TileConfiguration.txt fusion_method=[Linear Blending] regression_threshold=" + stitchRegThres + " max/avg_displacement_threshold=" + stitchMaxDispThres + " absolute_displacement_threshold=" + stitchAbsDispThres + " compute_overlap display_fusion subpixel_accuracy computation_parameters=[Save computation time (but use more RAM)] image_output=[Fuse and display]");  //image_output=[Fuse and display] or image_output=[Write to disk] output_directory=" + outputPath
-	//run("Grid/Collection stitching", "type=[Grid: row-by-row] order=[Right & Down                ] grid_size_x=2 grid_size_y=3 tile_overlap=30 first_file_index_i=1 directory=C:\\Users\\stoeter\\AppData\\Local\\Temp\\Fiji_Temp_Folder_Stitching\\ file_names=AssayPlate_Matrical_9MLG_lowGlass_B03_T0001F0{ii}L01A03Z01C01.tif output_textfile_name=TileConfiguration.txt fusion_method=[Linear Blending] regression_threshold=0.30 max/avg_displacement_threshold=2.50 absolute_displacement_threshold=3.50 compute_overlap subpixel_accuracy computation_parameters=[Save computation time (but use more RAM)] image_output=[Write to disk] output_directory=C:\\Users\\stoeter\\AppData\\Local\\Temp\\Fiji_Temp_Folder_Stitching\\");
-	outputImageName = getTitle();
-	//waitForUser("done");
-	if (!RGBstitch) for (currentChannel = 0; currentChannel < channelList.length; currentChannel++) { 
-		setMinAndMax(contrastValueArray[currentChannel * 2], contrastValueArray[currentChannel * 2 + 1]);
-		}
-	if (invertBFforPNG) {
-		setSlice(BFchannel);
-		run("Invert LUT"); //invert Bright filed image (C01.tif)
-		saveAs("Jpeg", outputPath + "Stitched" + wellFileName + fileTag + ".jpg");
-		setSlice(BFchannel);
-		run("Invert LUT"); //invert back
-		} else {
-		saveAs("Jpeg", outputPath + "Stitched" + wellFileName + fileTag + ".jpg");
-		}
-	if (RGBstitch) {
-		outputImageName = "Stitched" + wellFileName + fileTag + ".jpg";  // saveAs("Jpeg",...) doesnt change file name after saving if image is composite! .. if it is RGB then it does +> getTitle();
-		} else {
+		//now run the stiching plugin 
+		// for detail see this weib site: http://fiji.sc/Image_Stitching#Timelapse_alignment_for_Grid.2FCollection_Stitching	
+		run("Grid/Collection stitching", "type=[Grid: row-by-row] order=[Right & Down                ] grid_size_x=" + stitchGridX	+ " grid_size_y=" + stitchGridY	+ " tile_overlap_x=" + stitchOverlapX + " tile_overlap_y=" + stitchOverlapY + "  first_file_index_i=1 directory=" + tempPath + " file_names=" + fileName + fileTag + "_f" + "{ii}.tif" + " output_textfile_name=TileConfiguration.txt fusion_method=[Linear Blending] regression_threshold=" + stitchRegThres + " max/avg_displacement_threshold=" + stitchMaxDispThres + " absolute_displacement_threshold=" + stitchAbsDispThres + " compute_overlap display_fusion subpixel_accuracy computation_parameters=[Save computation time (but use more RAM)] image_output=[Fuse and display]");  //image_output=[Fuse and display] or image_output=[Write to disk] output_directory=" + outputPath
+		//run("Grid/Collection stitching", "type=[Grid: row-by-row] order=[Right & Down                ] grid_size_x=2 grid_size_y=3 tile_overlap=30 first_file_index_i=1 directory=C:\\Users\\stoeter\\AppData\\Local\\Temp\\Fiji_Temp_Folder_Stitching\\ file_names=AssayPlate_Matrical_9MLG_lowGlass_B03_T0001F0{ii}L01A03Z01C01.tif output_textfile_name=TileConfiguration.txt fusion_method=[Linear Blending] regression_threshold=0.30 max/avg_displacement_threshold=2.50 absolute_displacement_threshold=3.50 compute_overlap subpixel_accuracy computation_parameters=[Save computation time (but use more RAM)] image_output=[Write to disk] output_directory=C:\\Users\\stoeter\\AppData\\Local\\Temp\\Fiji_Temp_Folder_Stitching\\");
 		outputImageName = getTitle();
-		}
-	print("saved stiched image for " + wellList[currentWell], "as", outputImageName);  //to log window
-	if (saveAsGreyStack && nSlices > 1) Stack.setDisplayMode("grayscale");
-	if (invertBFforTIF) {
-		setSlice(BFchannel);
-		run("Invert LUT"); //invert Bright filed image (C01.tif)
-		saveAs("Tiff", outputPath + "Stitched" + wellFileName + fileTag + ".tif");
-		} else {
-		saveAs("Tiff", outputPath + "Stitched" + wellFileName + fileTag + ".tif");
-		}
-	outputImageName = getTitle();
-	print("saved stiched image for " + wellList[currentWell], "as", outputImageName);  //to log window
-	close();
+		//waitForUser("done");
+		if (!RGBstitch) for (currentChannel = 0; currentChannel < channelList.length; currentChannel++) { 
+			setMinAndMax(contrastValueArray[currentChannel * 2], contrastValueArray[currentChannel * 2 + 1]);
+			}
+		if (invertBFforPNG) {
+			setSlice(BFchannel);
+			run("Invert LUT"); //invert Bright filed image (C01.tif)
+			saveAs("Jpeg", outputPath + "Stitched" + wellFileName + fileTag + ".jpg");
+			setSlice(BFchannel);
+			run("Invert LUT"); //invert back
+			} else {
+			saveAs("Jpeg", outputPath + "Stitched" + wellFileName + fileTag + ".jpg");
+			}
+		if (RGBstitch) {
+			outputImageName = "Stitched" + wellFileName + fileTag + ".jpg";  // saveAs("Jpeg",...) doesnt change file name after saving if image is composite! .. if it is RGB then it does +> getTitle();
+			} else {
+			outputImageName = getTitle();
+			}
+		print("saved stiched image for " + wellList[currentWell], "as", outputImageName);  //to log window
+		if (saveAsGreyStack && nSlices > 1) Stack.setDisplayMode("grayscale");
+		if (invertBFforTIF) {
+			setSlice(BFchannel);
+			run("Invert LUT"); //invert Bright filed image (C01.tif)
+			saveAs("Tiff", outputPath + "Stitched" + wellFileName + fileTag + ".tif");
+			} else {
+			saveAs("Tiff", outputPath + "Stitched" + wellFileName + fileTag + ".tif");
+			}
+		outputImageName = getTitle();
+		print("saved stiched image for " + wellList[currentWell], "as", outputImageName);  //to log window
+		close();
 	
-	//waitForUser("done end");
-	// clean up temp folder
-	filesInTempFolder = getFileList(tempPath);
-	for(file = 0; file < filesInTempFolder.length; file++) {
-		print("deleting:", filesInTempFolder[file], File.delete(tempPath + filesInTempFolder[file]));
+		//waitForUser("done end");
+		// clean up temp folder
+		filesInTempFolder = getFileList(tempPath);
+		for(file = 0; file < filesInTempFolder.length; file++) {
+			print("deleting:", filesInTempFolder[file], File.delete(tempPath + filesInTempFolder[file]));
+			}
+		print("deleted", filesInTempFolder.length, "files from temp folder:", tempPath);
+		} else {
+		print("Well skipped due to incorrect image numbers: current wellFields = " + wellChannelFileList.length + ", all fields = " + fieldList.length + ", all channels = " + channelList.length);
+		run("Close All");
 		}
-	print("deleted", filesInTempFolder.length, "files from temp folder:", tempPath);
 	saveLog(outputPath + "Log_temp_" + tempLogFileNumber + ".txt");
 	}
 			
