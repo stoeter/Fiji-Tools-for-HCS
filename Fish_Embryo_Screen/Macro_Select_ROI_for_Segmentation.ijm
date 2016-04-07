@@ -53,6 +53,7 @@ Dialog.addMessage("Which channel to use? Give channel specific text!");
 Dialog.addString("Channel tag:", availableChannelsTags[1]);
 Dialog.show();
 channelsTag = Dialog.getString(); 
+print("Filter all .tif files for the presence to tag: " + channelsTag);
 
 //list files in directory
 fileList = getFileList(inputPath);
