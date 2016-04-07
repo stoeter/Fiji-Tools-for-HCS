@@ -5,7 +5,7 @@ macroDescription = "This macro loads images for the user to select ROIs for segm
 	"\nOption to count object manually. The user can manually draw/select an ROI, which is saved to a .zip file." +
 	"\nROIs can be loaded and applied on images with another macro." + 
 	"\nEach image can be manually annotated/flagged and all data will be stored in a log file.";
-release = "fourth release 01-03-2016 by Martin Stöter (stoeter(at)mpi-cbg.de)";
+release = "fifth release 07-04-2016 by Martin Stöter (stoeter(at)mpi-cbg.de)";
 html = "<html>"
 	+"<font color=red>" + macroName + "/n" + release + "</font> <br>"
 	+"<font color=black>Check for help on this web page:</font> <br>"
@@ -37,23 +37,22 @@ imageFormat = Dialog.getChoice();
 numberOfChannels = Dialog.getNumber();
 startAtWellNumber = Dialog.getNumber();
 fileListToLog = Dialog.getCheckbox();
+print("Image format: " + imageFormat + ", channels: " + numberOfChannels + ", start at well no.: " + startAtWellNumber);
 
 //set array variables for RGB merge
 availableChannels = newArray("*None*", "Channel_0", "Channel_1", "Channel_2", "Channel_3");  //array of color selection for channel 1-4
 availableChannelsTags = newArray("Ch1", "Ch2_subtracted", "Ch3", "Ch4");  //array of color selection for channel 1-4
 useChannels =newArray(numberOfChannels);
-channelsTags =newArray(numberOfChannels);
+//channelsTags =newArray(numberOfChannels);
 manualCounting = true;
 checkControlImage = false;
 	
 //set variables for auto contrast and background corrections
 Dialog.create("Select channels");
-Dialog.addMessage("Which channel to use and give channel specific text?");
-for (i = 1; i <= numberOfChannels; i++) Dialog.addCheckbox("Channel " + i, useChannels[i-1]);
-for (i = 1; i <= numberOfChannels; i++) Dialog.addString("Channel " + i, availableChannelsTags[i-1]);
+Dialog.addMessage("Which channel to use? Give channel specific text!");
+Dialog.addString("Channel tag:", availableChannelsTags[1]);
 Dialog.show();
-for (i = 0; i < numberOfChannels; i++) useChannels[i] = Dialog.getCheckbox();
-for (i = 0; i < numberOfChannels; i++) channelsTags[i] = Dialog.getString();
+channelsTag = Dialog.getString(); 
 
 //list files in directory
 fileList = getFileList(inputPath);
@@ -61,14 +60,20 @@ l = fileList.length;
 
 k=0;
 filteredFileList =newArray(l);
+
 for (i = 0; i < l; i++) {
-	if (fileListToLog) print(fileList[i], channelsTags[1], indexOf(fileList[i],channelsTags[1]));  //this needs to be rewritten with usechannels
-	if (indexOf(fileList[i],channelsTags[1]) != -1) {
+	if (fileListToLog) print(fileList[i], channelsTag, indexOf(fileList[i],channelsTag));  //this needs to be rewritten with usechannels
+	if (indexOf(fileList[i],channelsTag) != -1) {
 		filteredFileList[k] = fileList[i];
 		k++;
 		}
 	}
 filteredFileList = Array.slice(filteredFileList,0,k);
+//check if files were found
+if (filteredFileList.length == 0) {
+	print("No files found!", filteredFileList.length);
+	exit("No files found!");
+	}
 
 //setBatchMode(true);
 //configure
@@ -116,7 +121,7 @@ for (currentWell = startAtWellNumber-1; currentWell < wellList.length; currentWe
 				setTool("multipoint");
 				waitForUser("Select all objects manually then click 'OK'. zoom = [+/-]");	
 				run("Measure");
-				newImage("Points outline", "8-bit white", widthPixel, heightPixel, 1);
+				newImage(substring(fileName, 0, lengthOf(fileName)-4) + "_points", "8-bit white", widthPixel, heightPixel, 1);
 				run("Restore Selection");
 				run("Draw");
 				run("Invert");
