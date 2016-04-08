@@ -4,14 +4,17 @@ macroShortDescription = "This macro loads images and ROIs (.zip) to do segmetati
 macroDescription = "This macro loads images and ROIs (.zip) to do segmetation for pre-processed Opera images (.tif)." +
 	"\nOptionally, new segmentation parameters can be adjusted and measurement can be done in multiple channels" +
 	"\nIn the manual mode the macro allows interactively to process each image manually, alternatively batch processing is possible.";
-macroRelease = "fourth release 14-10-2014 by Macro_Segment2D_in_ROI Martin Stöter (stoeter(at)mpi-cbg.de)";
-macroHelpURL = "http://idisk-srv1.mpi-cbg.de/knime/FijiUpdate/TDS%20macros/" + macroName + ".htm";
+macroRelease = "fifth release 08-04-2016 by Martin Stöter (stoeter(at)mpi-cbg.de)";
+generalHelpURL = "https://github.com/stoeter/Fiji-Tools-for-HCS/wiki";
+macroHelpURL = generalHelpURL + "/" + macroName;
 macroHtml = "<html>"
-	+"<font color=red>" + macroName + "/n" + macroRelease + "</font> <br>"
+	+"<font color=red>" + macroName + "\n" + macroRelease + "</font> <br>"
 	+"<font color=black>Check for help on this web page:</font> <br>"
 	+"<font color=blue>" + macroHelpURL + "</font> <br>"
-	+"<font color=black>...get this URL from Log window!</font> <br>"
-    	+"</font>";
+	+"<font color=black>General info:</font> <br>"
+	+"<font color=blue>" + generalHelpURL + "</font> <br>"
+	+"<font color=black>...get this URLs from Log window!</font> <br>"
+   	+"</font>";
 
 //print macro name and current time to Log window
 getDateAndTime(year, month, dayOfWeek, dayOfMonth, hour, minute, second, msec); month++;
@@ -48,7 +51,7 @@ startAtWellNumber = Dialog.getNumber();
 
 //set array variables for RGB merge
 availableChannels = newArray("*None*", "Channel_0", "Channel_1", "Channel_2", "Channel_3");  //array of color selection for channel 1-4
-availableChannelsTags = newArray("Ch1", "Ch2_substracted", "Ch3", "Ch4");  //array of color selection for channel 1-4
+availableChannelsTags = newArray("Ch1", "Ch2_subtracted", "Ch3", "Ch4");  //array of color selection for channel 1-4
 useChannels = newArray(numberOfChannels);
 channelsTags = newArray(numberOfChannels);
 channelFileName = "noOtherChannelImageOpen";
@@ -63,7 +66,8 @@ previousSegmentation = false;
 checkControlImage = false;
 
 //set segmentation defaults
-availableROIpixelsForSegmentation = newArray("complete_Image", "ROI_only");  //array of possible sets of pixels for segmentation  //, "do_both:_complete_Image_and_ROI_only"
+availableROIpixelsForSegmentation = newArray("ROI_only", "complete_Image");  //array of possible sets of pixels for segmentation  //, "do_both:_complete_Image_and_ROI_only"
+ROIpixelsForSegmentation = availableROIpixelsForSegmentation[0];
 gaussianBlurRadius = 1.00;
 rollingBallRadius = 15;
 unsharpMaskRadius = 5;
@@ -79,15 +83,13 @@ Dialog.create("Select channels");
 Dialog.addMessage("Which channel to use and give channel specific text?");
 for (i = 1; i <= numberOfChannels; i++) Dialog.addCheckbox("Channel " + i, useChannels[i-1]);
 for (i = 1; i <= numberOfChannels; i++) Dialog.addString("Channel " + i, availableChannelsTags[i-1]);
-Dialog.addChoice("For segmentation use pixels from:", availableROIpixelsForSegmentation);	
 Dialog.addCheckbox("Use previous segmentation?", previousSegmentation);	
 Dialog.show();
 for (i = 0; i < numberOfChannels; i++) useChannels[i] = Dialog.getCheckbox();
 for (i = 0; i < numberOfChannels; i++) channelsTags[i] = Dialog.getString();
-ROIpixelsForSegmentation = Dialog.getChoice();
 previousSegmentation = Dialog.getCheckbox();
 //to log
-print("Segmentation parameters (default): segmentation in" + ROIpixelsForSegmentation + "; Gaussian radius =",gaussianBlurRadius,"; Unsharp mask radius/weight =",unsharpMaskRadius,"/",maskWeight,"; Auto Threshold Method =",autoThresholdMethod,"\nMinimum object size =",minObjectSize,"; Maximum object size =",maxObjectSize);
+print("Segmentation parameters (default): Gaussian radius =",gaussianBlurRadius,"; Unsharp mask radius/weight =",unsharpMaskRadius,"/",maskWeight,"; Auto Threshold Method =",autoThresholdMethod,"\nMinimum object size =",minObjectSize,"; Maximum object size =",maxObjectSize);
 
 //get list of channels
 channelTagList = newArray(0);
@@ -126,8 +128,14 @@ for (i = 0; i < l; i++) {
 		k++;
 		}
 	}
+	
 filteredFileList = Array.slice(filteredFileList,0,k);
-
+//check if files were found
+if (filteredFileList.length == 0) {
+	print("No files found!", filteredFileList.length);
+	exit("No files found!");
+	}
+	
 //setBatchMode(true);
 //configure
 run("Set Measurements...", "area mean standard min centroid center shape integrated median display redirect=None decimal=3");
@@ -219,7 +227,7 @@ for (currentWell = startAtWellNumber-1; currentWell < wellList.length; currentWe
 							Dialog.addMessage(" ... enter 0 for no blur, no subtraction or no unsharp mask!")	
 							Dialog.addChoice("Auto Threshold method?", allAutoThresholdMethods, autoThresholdMethod);
 							Dialog.addCheckbox("Show all auto threshold methods?", false);
-							Dialog.addNumber("Minumum object size:", minObjectSize);
+							Dialog.addNumber("Minimum object size:", minObjectSize);
 							Dialog.addNumber("Maximum object size:", maxObjectSize);
 							Dialog.show();
 							ROIpixelsForSegmentation = Dialog.getChoice();
