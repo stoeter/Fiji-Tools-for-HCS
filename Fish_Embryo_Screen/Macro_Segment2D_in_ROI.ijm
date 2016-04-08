@@ -21,6 +21,7 @@ getDateAndTime(year, month, dayOfWeek, dayOfMonth, hour, minute, second, msec); 
 print("\\Clear");
 print(macroName,"\nStart:",year+"-"+month+"-"+dayOfMonth+", "+hour+"-"+minute+"-"+second);
 print(macroHelpURL);
+print(generalHelpURL);
 
 //start macro
 Dialog.create("Fiji macro: " + macroName);
