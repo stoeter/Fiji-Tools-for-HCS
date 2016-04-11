@@ -1,23 +1,27 @@
-//function Show-Help-and-Functions is collection of functions
-macroName = "Show-Help-and-Functions";
+//function Show_Help_and_Functions is collection of functions
+macroName = "Show_Help_and_Functions";
 macroShortDescription = "This macro writes links (URLs) to the log window.";
 macroDescription = "This macro writes links (URLs) to the log window." +
 	"<br>Copy/paste into web browser to access the functions stored on GitHub."
-macroRelease = "second release 10-03-2015 by Martin Stöter (stoeter(at)mpi-cbg.de)";
-macroHelpURL = "https://github.com/stoeter/Fiji-Tools-for-HCS/wiki";
+macroRelease = "third release 11-04-2016 by Martin Stöter (stoeter(at)mpi-cbg.de)";
+generalHelpURL = "https://github.com/stoeter/Fiji-Tools-for-HCS/wiki";
+macroHelpURL = generalHelpURL + "/" + macroName;
 macroHtml = "<html>" 
 	+"<font color=red>" + macroName + "\n" + macroRelease + "</font> <br> <br>"
 	+"<font color=black>" + macroDescription + "</font> <br> <br>"
 	+"<font color=black>Check for more help on this web page:</font> <br>"
 	+"<font color=blue>" + macroHelpURL + "</font> <br>"
-	+"<font color=black>...get this URL from Log window!</font>"
+	+"<font color=black>General info:</font> <br>"
+	+"<font color=blue>" + generalHelpURL + "</font> <br>"
+	+"<font color=black>...get these URLs from Log window!</font> <br>"
     +"</font>";
 
 //print macro name and current time to Log window
 getDateAndTime(year, month, dayOfWeek, dayOfMonth, hour, minute, second, msec); month++;
 print("\\Clear");
 print(macroName,"\nStart:",year+"-"+month+"-"+dayOfMonth+", "+hour+"-"+minute+"-"+second);
-print("More help here:", macroHelpURL);
+print(macroHelpURL);
+print(generalHelpURL);
 
 //start macro
 Dialog.create("Fiji macro: " + macroName);

@@ -1,19 +1,35 @@
 //Macro_Opera_Stack_Montage_for_Fish
 macroName = "Macro_Opera_Stack_Montage_for_Fish";
+macroShortDescription = "This macro loads Opera images (.flex) and saves the montage of subsequent fields as .tif";
 macroDescription = "This macro loads Opera images (.flex) and saves the montage of subsequent fields as .tif" +
-	"\nThe macro can handle stacks and up to 4 channels" +
+	"\nThe macro can handle stacks, makes Z max projection and works for up to 4 channels" +
 	"\nThis macro does optionally an autofluorescence substraction (Ch2-Ch3).";
-release = "third release 29-02-2016 by Martin Stöter (stoeter(at)mpi-cbg.de)";
-html = "<html>"
-	+"<font color=red>" + macroName + "/n" + release + "</font> <br>"
+macroRelease = "third release 29-02-2016 by Martin Stöter (stoeter(at)mpi-cbg.de)";
+generalHelpURL = "https://github.com/stoeter/Fiji-Tools-for-HCS/wiki";
+macroHelpURL = generalHelpURL + "/" + macroName;
+macroHtml = "<html>"
+	+"<font color=red>" + macroName + "\n" + macroRelease + "</font> <br>"
 	+"<font color=black>Check for help on this web page:</font> <br>"
-	+"<font color=blue>https://github.com/stoeter/Fiji-Tools-for-HCS/wiki/Macro-Opera-Stack-Montage-for-Fish</font> <br>"
-	+"<font color=black>...get this URL from Log window!</font> <br>"
-    	+"</font>";
+	+"<font color=blue>" + macroHelpURL + "</font> <br>"
+	+"<font color=black>General info:</font> <br>"
+	+"<font color=blue>" + generalHelpURL + "</font> <br>"
+	+"<font color=black>...get these URLs from Log window!</font> <br>"
+   	+"</font>";
+
 //print macro name and current time to Log window
 getDateAndTime(year, month, dayOfWeek, dayOfMonth, hour, minute, second, msec); month++;
 print("\\Clear");
 print(macroName,"\nStart:",year+"-"+month+"-"+dayOfMonth+", "+hour+"-"+minute+"-"+second);
+print(macroHelpURL);
+print(generalHelpURL);
+
+//start macro
+Dialog.create("Fiji macro: " + macroName);
+Dialog.addMessage("Fiji macro: " + macroName + " (Fiji-Tools by TDS@MPI-CBG)\n \n" + macroShortDescription + "\n \nClick 'OK' to go on, 'Cancel' to quit or 'Help' for online description.");     
+Dialog.addHelp(macroHtml);
+Dialog.show;
+
+////////////////////////////////        M A C R O   C O D E         /////////////////////////////// 
 
 //configure
 run("Set Measurements...", "area mean standard min centroid center shape integrated median display redirect=None decimal=3");
@@ -31,8 +47,7 @@ print(printPaths);
 tempLogFileNumber = 1;
 if(outputPath != "not available") while (File.exists(outputPath + "Log_temp_" + tempLogFileNumber +".txt")) tempLogFileNumber ++; //find last tempLog file to prevent overwriting of log 
 
-////////////////////////////////        M A C R O   C O D E         /////////////////////////////// 
-
+//set variables
 resultSubfolders = newArray("rawtif", "Zmax", "RGB");  //folder names where to store result images
 Array.concat(resultSubfolders,File.separator);		   //add OS specific fiel separator
 for (i = 0; i < resultSubfolders.length; i++) {

@@ -13,7 +13,7 @@ macroHtml = "<html>"
 	+"<font color=blue>" + macroHelpURL + "</font> <br>"
 	+"<font color=black>General info:</font> <br>"
 	+"<font color=blue>" + generalHelpURL + "</font> <br>"
-	+"<font color=black>...get this URLs from Log window!</font> <br>"
+	+"<font color=black>...get these URLs from Log window!</font> <br>"
    	+"</font>";
 
 //print macro name and current time to Log window
@@ -25,9 +25,11 @@ print(generalHelpURL);
 
 //start macro
 Dialog.create("Fiji macro: " + macroName);
-Dialog.addMessage("Fiji macro: " + macroName + " (Fiji-Tools by TDS@MPI-CBG)\n \n" + macroShortDescription + "\nClick 'OK' to go on, 'Cancel' to quit or 'Help' for online description.");     
+Dialog.addMessage("Fiji macro: " + macroName + " (Fiji-Tools by TDS@MPI-CBG)\n \n" + macroShortDescription + "\n \nClick 'OK' to go on, 'Cancel' to quit or 'Help' for online description.");     
 Dialog.addHelp(macroHtml);
 Dialog.show;
+
+////////////////////////////////        M A C R O   C O D E         /////////////////////////////// 
 
 //choose folders
 inputPath = getDirectory("Choose image folder... ");

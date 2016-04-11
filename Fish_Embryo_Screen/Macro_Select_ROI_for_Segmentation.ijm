@@ -1,21 +1,37 @@
 //Macro_Select_ROI_for_Segmentation
 macroName = "Macro_Select_ROI_for_Segmentation";
+macroShortDescription = "This macro loads images for the user to select ROIs for segmentation.";
 macroDescription = "This macro loads images for the user to select ROIs for segmentation." +
 	"\nThe macro can handle up to 4 channels, but only one is actually processed" +
 	"\nOption to count object manually. The user can manually draw/select an ROI, which is saved to a .zip file." +
 	"\nROIs can be loaded and applied on images with another macro." + 
 	"\nEach image can be manually annotated/flagged and all data will be stored in a log file.";
-release = "fifth release 07-04-2016 by Martin Stöter (stoeter(at)mpi-cbg.de)";
-html = "<html>"
-	+"<font color=red>" + macroName + "/n" + release + "</font> <br>"
+macroRelease = "fifth release 07-04-2016 by Martin Stöter (stoeter(at)mpi-cbg.de)";
+generalHelpURL = "https://github.com/stoeter/Fiji-Tools-for-HCS/wiki";
+macroHelpURL = generalHelpURL + "/" + macroName;
+macroHtml = "<html>"
+	+"<font color=red>" + macroName + "\n" + macroRelease + "</font> <br>"
 	+"<font color=black>Check for help on this web page:</font> <br>"
-	+"<font color=blue>http://idisk-srv1.mpi-cbg.de/knime/FijiUpdate/" + macroName + ".htm this is under construction</font> <br>"
-	+"<font color=black>...get this URL from Log window!</font> <br>"
-    	+"</font>";
+	+"<font color=blue>" + macroHelpURL + "</font> <br>"
+	+"<font color=black>General info:</font> <br>"
+	+"<font color=blue>" + generalHelpURL + "</font> <br>"
+	+"<font color=black>...get these URLs from Log window!</font> <br>"
+   	+"</font>";
+
 //print macro name and current time to Log window
 getDateAndTime(year, month, dayOfWeek, dayOfMonth, hour, minute, second, msec); month++;
 print("\\Clear");
 print(macroName,"\nStart:",year+"-"+month+"-"+dayOfMonth+", "+hour+"-"+minute+"-"+second);
+print(macroHelpURL);
+print(generalHelpURL);
+
+//start macro
+Dialog.create("Fiji macro: " + macroName);
+Dialog.addMessage("Fiji macro: " + macroName + " (Fiji-Tools by TDS@MPI-CBG)\n \n" + macroShortDescription + "\n \nClick 'OK' to go on, 'Cancel' to quit or 'Help' for online description.");     
+Dialog.addHelp(macroHtml);
+Dialog.show;
+
+////////////////////////////////        M A C R O   C O D E         /////////////////////////////// 
 
 //choose folders
 inputPath = getDirectory("Choose image folder... ");
