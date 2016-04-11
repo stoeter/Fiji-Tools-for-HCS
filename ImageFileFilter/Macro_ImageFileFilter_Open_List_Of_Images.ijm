@@ -1,24 +1,28 @@
 //ImageFileFilter-Open-List-of-Images
-macroName = "ImageFileFilter-Open-List-of-Images";
+macroName = "Macro_ImageFileFilter_Open_List_of_Images";
 macroShortDescription = "This macro open all filtered files in a selected folder.";
 macroDescription = "This macro reads single .tif images." +
 	"<br>The chosen folder will be searched for images including subfolders" +
 	"<br>and the list of files to be processed can be filters for text or tags in the file path.";
-macroRelease = "first release 28-11-2014 by Martin Stöter (stoeter(at)mpi-cbg.de)";
-macroHelpURL = "https://github.com/stoeter/Fiji-Tools-for-HCS/wiki/Macro-" + macroName;
+macroRelease = "second release 11-04-2016 by Martin Stöter (stoeter(at)mpi-cbg.de)";
+generalHelpURL = "https://github.com/stoeter/Fiji-Tools-for-HCS/wiki";
+macroHelpURL = generalHelpURL + "/" + macroName;
 macroHtml = "<html>" 
 	+"<font color=red>" + macroName + "\n" + macroRelease + "</font> <br> <br>"
 	+"<font color=black>" + macroDescription + "</font> <br> <br>"
 	+"<font color=black>Check for more help on this web page:</font> <br>"
 	+"<font color=blue>" + macroHelpURL + "</font> <br>"
-	+"<font color=black>...get this URL from Log window!</font>"
+	+"<font color=black>General info:</font> <br>"
+	+"<font color=blue>" + generalHelpURL + "</font> <br>"
+	+"<font color=black>...get these URLs from Log window!</font> <br>"
     +"</font>";
-    	
+
 //print macro name and current time to Log window
 getDateAndTime(year, month, dayOfWeek, dayOfMonth, hour, minute, second, msec); month++;
 print("\\Clear");
-print(macroName,"\nStart:",year+"-"+month+"	-"+dayOfMonth+", h"+hour+"-m"+minute+"-s"+second);
+print(macroName,"\nStart:",year+"-"+month+"-"+dayOfMonth+", "+hour+"-"+minute+"-"+second);
 print(macroHelpURL);
+print(generalHelpURL);
 
 //start macro
 Dialog.create("Fiji macro: " + macroName);
@@ -51,7 +55,7 @@ fileExtension = ".tif";                                                  //pre-d
 var filterStrings = newArray("","","");                                      //pre-definition of strings to filter
 var availableFilterTerms = newArray("no filtering", "include", "exclude");   //dont change this
 var filterTerms = newArray("no filtering", "no filtering", "no filtering");  //pre-definition of filter types 
-displayFileList = false;                                                 //shall array window be shown? 
+var displayFileList = false;                                                 //shall array window be shown? 
 
 setDialogImageFileFilter();
 //get file list ALL
