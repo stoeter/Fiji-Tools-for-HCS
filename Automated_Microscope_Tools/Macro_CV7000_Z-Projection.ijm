@@ -53,21 +53,26 @@ availableProjectionTerms = newArray("Max Intensity", "Sum Slices", "Average Inte
 
 //set array variables
 var fileExtension = ".tif";                                                  //pre-definition of extension
-var filterStrings = newArray("back","","");                                      //pre-definition of strings to filter
+var filterStrings = newArray("","","");                                      //pre-definition of strings to filter
 var availableFilterTerms = newArray("no filtering", "include", "exclude");   //dont change this
-var filterTerms = newArray("exclude", "no filtering", "no filtering");  //pre-definition of filter types 
+var filterTerms = newArray("no filtering", "no filtering", "no filtering");  //pre-definition of filter types 
 var displayFileList = false;                                                 //shall array window be shown? 
 setDialogImageFileFilter();
 
 print("Image file filter:", filterTerms[0],filterStrings[0] + ";",filterTerms[1],filterStrings[1] + ";",filterTerms[2],filterStrings[2]);
+print("Processing file list...");
 
 //get file list ALL
 fileList = getFileListSubfolder(inputPath, displayFileList);  //read all files in subfolders
 fileList = getFileType(fileList, fileExtension, displayFileList);
 fileList = getFilteredFileList(fileList, false, displayFileList);    //filter for strings
-//filterStrings = newArray("back","C03","");
-//filterTerms = newArray("exclude", "include", "no filtering"); 
-fileList = getFilteredFileList(fileList, false, false);  
+if (fileList.length == 0) exit("No files to process");  
+
+filterStrings = newArray("DC_sCMOS #","SC_BP","");
+filterTerms = newArray("exclude", "exclude", "no filtering"); 
+print("removing correction files from file list containing text", filterStrings[0], filterStrings[1], filterStrings[2]);
+fileList = getFilteredFileList(fileList, false, false);
+if (fileList.length == 0) exit("No files to process");  
 
 wellList = getUniqueWellListCV7000(fileList, displayFileList);
 wellFieldList = getUniqueWellFieldListCV7000(fileList, displayFileList);
@@ -250,19 +255,28 @@ return returnedList;
 //function returnes the unique wells of an array of CV7000 files
 //example: myUniqueWells = getUniqueWellListCV7000(myList, true);
 function getUniqueWellListCV7000(inputArray, displayList) {
-currentWell = substring(inputArray[0],lastIndexOf(inputArray[0],"_T00")-3,lastIndexOf(inputArray[0],"_T00"));   //first well found
+if (lastIndexOf(inputArray[0],"_T00") > 0) { //check first well
+	currentWell = substring(inputArray[0],lastIndexOf(inputArray[0],"_T00")-3,lastIndexOf(inputArray[0],"_T00"));   //first well found
+	} else {
+	print("no well found in path:", inputArray[i]);	
+	exit("No well information found in file name. Please double-check the file filtering...");
+	}	
 returnedWellList = newArray(currentWell);     //this list stores all unique wells found and is returned at the end of the function
 for (i = 1; i < inputArray.length; i++) {
 	j = 0;									//counter for returned well list
 	valueUnique = true;						//as long as value was not found in array of unique values
-	while (valueUnique && (returnedWellList.length > j)) {   //as long as value was not found in array of unique values and end of array is not reached
-		currentWell = substring(inputArray[i],lastIndexOf(inputArray[i],"_T00")-3,lastIndexOf(inputArray[i],"_T00"));
-		if(returnedWellList[j] == currentWell) {
-			valueUnique = false;			//if value was found in array of unique values stop while loop
-			} else {
-			j++;
-			}
-		}  //end while
+	if (lastIndexOf(inputArray[i],"_T00") > 0) {  // if CV7000 file names are recognized
+		while (valueUnique && (returnedWellList.length > j)) {   //as long as value was not found in array of unique values and end of array is not reached
+			currentWell = substring(inputArray[i],lastIndexOf(inputArray[i],"_T00")-3,lastIndexOf(inputArray[i],"_T00"));
+			if (returnedWellList[j] == currentWell) {
+				valueUnique = false;			//if value was found in array of unique values stop while loop
+				} else {
+				j++;
+				}
+			}  //end while
+		} else {
+		print("no well found in path:", inputArray[i]);	
+		}		
 	if (valueUnique) returnedWellList = Array.concat(returnedWellList, currentWell);  //if value was not found in array of unique values add it to the end of the array of unique values
 	}
 print(returnedWellList.length + " wells found."); 
@@ -274,21 +288,30 @@ return returnedWellList;
 //function returnes the unique well files (all fields of all wells, e.g. G10_T0001F001) of an array of CV7000 files
 //example: myUniqueWellFileds = getUniqueWellFieldListCV7000(myList, true);
 function getUniqueWellFieldListCV7000(inputArray, displayList) {
-currentWellField = substring(inputArray[0],lastIndexOf(inputArray[0],"_T00")-3,lastIndexOf(inputArray[0],"_T00")+10);   //first well field found
+if (lastIndexOf(inputArray[0],"_T00") > 0) { //check first well field
+	currentWellField = substring(inputArray[0],lastIndexOf(inputArray[0],"_T00")-3,lastIndexOf(inputArray[0],"_T00")+10);   //first well field found
+	} else {
+	print("no well found in path:", inputArray[i]);	
+	exit("No well field information found in file name. Please double-check the file filtering...");
+	}
 returnedWellFieldList = newArray(currentWellField);     //this list stores all unique wells fields found and is returned at the end of the function
 //print("start:", currentWellField, returnedWellFieldList.length);
 for (i = 0; i < inputArray.length; i++) {
 	j = 0;									//counter for returned well field list
 	valueUnique = true;						//as long as value was not found in array of unique values
-	while (valueUnique && (returnedWellFieldList.length > j)) {   //as long as value was not found in array of unique values and end of array is not reached
-		currentWellField = substring(inputArray[i],lastIndexOf(inputArray[i],"_T00")-3,lastIndexOf(inputArray[i],"_T00")+10);
-		//print(i,j,currentWellField, returnedWellFieldList[j]);
-		if(returnedWellFieldList[j] == currentWellField) {
-			valueUnique = false;			//if value was found in array of unique values stop while loop
-			} else {
-			j++;
-			}
-		}  //end while
+	if (lastIndexOf(inputArray[i],"_T00") > 0) {  // if CV7000 file names are recognized
+		while (valueUnique && (returnedWellFieldList.length > j)) {   //as long as value was not found in array of unique values and end of array is not reached
+			currentWellField = substring(inputArray[i],lastIndexOf(inputArray[i],"_T00")-3,lastIndexOf(inputArray[i],"_T00")+10);
+			//print(i,j,currentWellField, returnedWellFieldList[j]);
+			if(returnedWellFieldList[j] == currentWellField) {
+				valueUnique = false;			//if value was found in array of unique values stop while loop
+				} else {
+				j++;
+				}
+			}  //end while
+		} else {
+		print("no well field found in path:", inputArray[i]);	
+		}		
 	//print("final:", currentWellField, valueUnique, returnedWellFieldList.length);
 	if (valueUnique) returnedWellFieldList = Array.concat(returnedWellFieldList, currentWellField);  //if value was not found in array of unique values add it to the end of the array of unique values
 	}
