@@ -29,7 +29,7 @@ manualMode = true;
 	
 //initialize => default settings
 run("Set Measurements...", "area mean standard min centroid center shape integrated median display redirect=None decimal=3");
-run("Input/Output...", "jpeg=75 gif=-1 file=.txt copy_column copy_row save_column save_row");	
+run("Input/Output...", "jpeg=95 gif=-1 file=.txt copy_column copy_row save_column save_row");	
 run("Close All");
 
 //////////////////             M A C R O   :   L E I C A _ . L S M _ T O _ . T I F        /////////////////////////////// 
@@ -42,7 +42,7 @@ for (currentFile = 0; currentFile < fileList.length; currentFile++) {
 	if (endsWith(fileList[currentFile],".lsm")) {   //check if it is right file and handle error on open()
 		IJ.redirectErrorMessages();
 		open(inputPath + fileList[currentFile]);
-        	if (nImages > 0) {			//if image is open
+        if (nImages > 0) {			//if image is open
 			getDimensions(width, height, channels, slices, frames);
 			if (channels > 1) {		//split channels or give new image name as if it was split
 				run("Split Channels");
@@ -88,7 +88,7 @@ for (currentFile = 0; currentFile < fileList.length; currentFile++) {
 				if (!skipImage) {						//if user skips file
 					saveAs("Tiff", outputPath + substring(fileList[currentFile],0,lengthOf(fileList[currentFile])-4) + suffix +  ".tif");
 					print("saved:", substring(fileList[currentFile],0,lengthOf(fileList[currentFile])-4) + suffix +  ".tif");
-					} else
+					} else {
 					print("file: ", fileList[currentFile], " skipped by user.");
 					}
 				close();
