@@ -157,6 +157,7 @@ for (currentFile = 0; currentFile < fileList.length; currentFile++) {
 			//Crop the image
 			makeRectangle(coodinateX - 20, coodinateY - 20 , width + 40, height + 40);
 			run("Duplicate...", "Analysed Cell");
+			run("Select None");
 			run("Grays");
 			//Print slice position on duplicated image
 			setFont("SanSerif", 10, "antialiased");
