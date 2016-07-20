@@ -153,11 +153,17 @@ for (currentFile = 0; currentFile < fileList.length; currentFile++) {
 
 			//Overlay the background box
 			selectWindow(currentImage);
+			Stack.getPosition(channel, slice, frame); //to print slice position later
 			run("Add Selection...");
 			//Crop the image
 			makeRectangle(coodinateX - 20, coodinateY - 20 , width + 40, height + 40);
 			run("Duplicate...", "Analysed Cell");
 			run("Grays");
+			//Print slice position on duplicated image
+			setFont("SanSerif", 10, "antialiased");
+ 			setColor("white");
+			Overlay.drawString("c:" + channel + "/ z:" + slice + "/ t:" + frame,  5,15);
+  			Overlay.show();
 			run("Enhance Contrast", "saturated=0.35");
 	
 			//Save the image file
