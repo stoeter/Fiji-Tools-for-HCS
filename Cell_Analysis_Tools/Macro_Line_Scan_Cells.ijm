@@ -3,8 +3,7 @@ macroName = "Line_Scan_Cells";
 macroShortDescription = "With this Macro you can speed up your line scans.";
 macroDescription = "This macro writes links (URLs) to the log window." +
 	"<br>- Select input folder" +
-	"<br>- Select ouput folder for Plot Profile and analyzed cells" +
-	"<br>- Select output folder for Cytoplasmic Background" + 
+	"<br>- Select ouput folder for saving files (plot profile, cytoplasmic background and analyzed cells)" + 
 	"<br>- Follow the instructions";
 macroRelease = "first release 19-07-2016 by Sriyash Mangal (mangal(at)biologie.uni-muenchen.de) & Martin Stöter (stoeter(at)mpi-cbg.de)";
 generalHelpURL = "https://github.com/stoeter/Fiji-Tools-for-HCS/wiki";
