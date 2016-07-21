@@ -59,6 +59,7 @@ print("Image file filter:", filterTerms[0],filterStrings[0] + ";",filterTerms[1]
 
 lineScanWindow = "Line Scan Data";
 lineWidth = 4;
+doAutoContrast = true;
 
 //get file list ALL
 //fileList = getFileList(inputPath);
@@ -74,7 +75,7 @@ for (currentFile = 0; currentFile < fileList.length; currentFile++) {
 	currentImage = getTitle();
 	currentImageNoExt = substring(currentImage, 0, lengthOf(currentImage) - 4);
 	showProgress(currentFile / fileList.length);
-	run("Enhance Contrast", "saturated=0.35");
+	if (doAutoContrast) run("Enhance Contrast", "saturated=0.35");
 	run("Select None");
 	numberOfProfile = 0;
 	doLineScan = true;
@@ -82,9 +83,11 @@ for (currentFile = 0; currentFile < fileList.length; currentFile++) {
 	while (doLineScan) {
 		Dialog.create("Analyse this image?");
 		Dialog.addCheckbox("Check to perform a line scan?", true);
+		Dialog.addCheckbox("Auto-adjust contrast?", doAutoContrast);
 		Dialog.addNumber("Line width?", lineWidth);
 		Dialog.show(); 
 		doLineScan = Dialog.getCheckbox();
+		doAutoContrast = Dialog.getCheckbox();
 		lineWidth = Dialog.getNumber();
 		run("Line Width...", "line=" + lineWidth); 
 	
@@ -156,7 +159,7 @@ for (currentFile = 0; currentFile < fileList.length; currentFile++) {
 			run("Add Selection...");
 			//Crop the image
 			makeRectangle(coodinateX - 20, coodinateY - 20 , width + 40, height + 40);
-			run("Duplicate...", "Analysed Cell");
+			run("Duplicate...", "title=Analysed_Cell");
 			run("Select None");
 			run("Grays");
 			//Print slice position on duplicated image
@@ -164,12 +167,22 @@ for (currentFile = 0; currentFile < fileList.length; currentFile++) {
  			setColor("white");
 			Overlay.drawString("c:" + channel + "/ z:" + slice + "/ t:" + frame,  5,15);
   			Overlay.show();
+  			//duplicate image to save a combined image with and without overlays 
 			run("Enhance Contrast", "saturated=0.35");
+			run("Duplicate...", "title=Analysed_Cell_2");
+			run("Hide Overlay");
+			run("RGB Color");
+			selectWindow("Analysed_Cell");
+			run("Flatten");
+			flattendImage = getTitle();
+			run("Combine...", "stack1=" + flattendImage + " stack2=Analysed_Cell_2");
 	
 			//Save the image file
 			print(outputPath + currentImageNoExt + "_analysedCell_" + getNumberToString(numberOfProfile, 0, 2) + ".txt");	
 			saveAs("png", outputPath + currentImageNoExt + "_analysedCell_" + getNumberToString(numberOfProfile, 0, 2) + ".txt");
-			close();
+			close();  //combined image
+			close("Analysed_Cell");
+
 			}  //if 
 		if (isOpen("Plot of " + currentImageNoExt)) close("Plot of " + currentImageNoExt);	
 		saveLog(outputPath + "Log_temp_" + tempLogFileNumber +".txt");
