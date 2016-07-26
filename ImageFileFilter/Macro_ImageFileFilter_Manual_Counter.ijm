@@ -5,7 +5,7 @@ macroDescription = "This macro reads single .tif images." +
 	"<br>The chosen folder will be searched for images including subfolders" +
 	"<br>nand the list of files to be processed can be filters for text or tags in the file path." + 
 	"<br>Objects can be manually counted in each image and results are saved in result folder.";
-macroRelease = "first release 28-11-2014 by Martin Stöter (stoeter(at)mpi-cbg.de)";
+macroRelease = "second release 26-07-2016 by Martin Stöter (stoeter(at)mpi-cbg.de)";
 macroHelpURL = "https://github.com/stoeter/Fiji-Tools-for-HCS/wiki/Macro-" + macroName;
 macroHtml = "<html>" 
 	+"<font color=red>" + macroName + "\n" + macroRelease + "</font> <br> <br>"
@@ -56,9 +56,9 @@ var displayFileList = false;                                                 //s
 
 setDialogImageFileFilter();
 //get file list ALL
-fileList = getFileListSubfolder(inputPath);  //read all files in subfolders
-fileList = getFileType(fileList);			 //filter for extension
-fileList = getFilteredFileList(fileList);    //filter for strings
+fileList = getFileListSubfolder(inputPath, displayFileList);  //read all files in subfolders
+fileList = getFileType(fileList, fileExtension, displayFileList);			 //filter for extension
+fileList = getFilteredFileList(fileList, false, displayFileList);    //filter for strings
 
 waitForUser("Do you really want to open " + fileList.length + " files?" + "\n\n" + "Otherwise press 'ESC' and check image list and filter text!");
 
@@ -125,7 +125,18 @@ if(outputPath != "not available") {
 /////////////////////////////////////////////////////////////////////////////////////////////
 ////////                             F U N C T I O N S                          /////////////
 /////////////////////////////////////////////////////////////////////////////////////////////
-//function open dialog to set image file list filter
+//function opens a dialog to set text list for filtering a list
+//example: setDialogImageFileFilter();
+//this function set interactively the global variables used by the function getFilteredFileList
+//this function needs global variables! (see below)
+/*
+var fileExtension = ".tif";                                                  //default definition of extension
+var filterStrings = newArray("","","");                                      //default definition of strings to filter
+var availableFilterTerms = newArray("no filtering", "include", "exclude");   //dont change this
+var filterTerms = newArray(filterStrings.length); for  (i = 0; i < filterStrings.length; i++) {filterTerms[i] = "no filtering";} //default definition of filter types (automatic)
+//var filterTerms = newArray("no filtering", "no filtering", "no filtering");  //default definition of filter types (manual)
+var displayFileList = false;                                                 //shall array window be shown? 
+*/
 function setDialogImageFileFilter() {
 Dialog.create("Image file filter...");  //enable use inveractivity
 Dialog.addMessage("Define the files to be processed:");
@@ -145,57 +156,67 @@ for (i = 0; i < filterStrings.length; i++) {
 displayFileList = Dialog.getCheckbox();
 }
 
-//function get all files from folders and subfolders
-function getFileListSubfolder(inputPathFunction) {
-fileList = getFileList(inputPathFunction);  //read file list
-Array.sort(fileList);
+//function gets all files from folders and subfolders
+//example: myFileList = getFileListSubfolder("/home/myFolder/", true);
+function getFileListSubfolder(inputPathFunction, displayList) {
+fileListFunction = getFileList(inputPathFunction);  //read file list
+Array.sort(fileListFunction);
 returnedFileList = newArray(0);     //this list stores all found files and is returned at the end of the function
-for (i=0; i < fileList.length; i++) {
-	if ((File.separator == "\\") && (endsWith(fileList[i], "/"))) fileList[i] = replace(fileList[i],"/",File.separator); //fix windows/Fiji File.separator bug
-	if (endsWith(fileList[i], File.separator)) {   //if it is a folder
+for (i=0; i < fileListFunction.length; i++) {
+	if ((File.separator == "\\") && (endsWith(fileListFunction[i], "/"))) fileListFunction[i] = replace(fileListFunction[i],"/",File.separator); //fix windows/Fiji File.separator bug
+	if (endsWith(fileListFunction[i], File.separator)) {   //if it is a folder
 		returnedFileListTemp = newArray(0);
-		returnedFileListTemp = getFileListSubfolder(inputPathFunction + fileList[i]);
+		returnedFileListTemp = getFileListSubfolder(inputPathFunction + fileListFunction[i],displayList);
 		returnedFileList = Array.concat(returnedFileList, returnedFileListTemp);
 		} else {  									//if it is a file
-		returnedFileList = Array.concat(returnedFileList, inputPathFunction + fileList[i]);
-		//print(i, inputPath + fileList[i]);
+		returnedFileList = Array.concat(returnedFileList, inputPathFunction + fileListFunction[i]);
+		//print(i, inputPath + fileList[i]); //to log window
 		}
 	}
 if(inputPathFunction == inputPath) { //if local variable is equal to global path variable = if path is folder and NOT subfolder
 	print(returnedFileList.length + " files found in selected folder and subfolders."); 	
-	if (displayFileList) {Array.show("All files - all",returnedFileList);} 	
-}
+	if (displayList) {Array.show("All files - all",returnedFileList);} 	
+	}
 return returnedFileList;
 }
 
-//function finds all files with certain extension
-function getFileType(fileListFunction) {
+//function filters all files with certain extension
+//example: myFileList = getFileType(myFileList, ".tif", true);
+function getFileType(fileListFunction, fileExtension, displayList) {
 returnedFileList = newArray(0);     //this list stores all files found to have the extension and is returned at the end of the function
 if(lengthOf(fileExtension) > 0) {
 	for (i = 0; i < fileListFunction.length; i++) {
 		if (endsWith(fileListFunction[i],fileExtension)) returnedFileList = Array.concat(returnedFileList,fileListFunction[i]);
 		}
 	print(returnedFileList.length + " files found with extension " + fileExtension + ".");
-	if (displayFileList) {Array.show("All files - filtered for " + fileExtension, returnedFileList);} 
+	if (displayList) {Array.show("All files - filtered for " + fileExtension, returnedFileList);} 
 	} else {
 	returnedFileList = fileListFunction;	
 	}
 return returnedFileList;
 }
 
-//function filter a file list for a certain string
-function getFilteredFileList(fileListFunction) {
+//function filters a file list for a certain strings
+//example: myFileList = getFilteredFileList(myFileList, false, true);
+//if filterOnInputList = true, then additional filtering is possible (e.g. file names containing "H08" and "D04" => H08 and D04 in list)
+//if filterOnInputList = false, then subsequent filtering is possible (e.g. file names containing "controls" and "positive" => positive controls, but not negative controls in list!)
+//this function needs global variables (see function setDialogImageFileFilter)
+//var filterStrings = newArray("","","");                                      //pre-definition of strings to filter
+//var availableFilterTerms = newArray("no filtering", "include", "exclude");   //dont change this
+//var filterTerms = newArray("no filtering", "no filtering", "no filtering");
+function getFilteredFileList(fileListFunction, filterOnInputList, displayList) {
 skippedFilter = 0;	
 for (i = 0; i < filterStrings.length; i++) {
 	if (filterTerms[i] != availableFilterTerms[0]) {
 		returnedFileList = newArray(0);     //this list stores all files found to have the extension and is returned at the end of the function
-		for (j = 0; j < fileList.length; j++) {
-			if (filterTerms[i] == "include" && indexOf(fileList[j],filterStrings[i]) != -1) returnedFileList = Array.concat(returnedFileList,fileListFunction[j]);
-			if (filterTerms[i] == "exclude" && indexOf(fileList[j],filterStrings[i]) <= 0) returnedFileList = Array.concat(returnedFileList,fileListFunction[j]);
+		for (j = 0; j < fileListFunction.length; j++) {
+			if (filterTerms[i] == "include" && indexOf(fileListFunction[j],filterStrings[i]) != -1) returnedFileList = Array.concat(returnedFileList,fileListFunction[j]);
+			if (filterTerms[i] == "exclude" && indexOf(fileListFunction[j],filterStrings[i]) <= 0) returnedFileList = Array.concat(returnedFileList,fileListFunction[j]);
 			}
 		print(returnedFileList.length + " files found after filter: " + filterTerms[i] + " text " + filterStrings[i] + "."); 
-		if (displayFileList) {Array.show("List of files - after filtering for " + filterStrings[i], returnedFileList);}
-		fileListFunction = returnedFileList;
+		if (displayList) {Array.show("List of files - after filtering for " + filterStrings[i], returnedFileList);}
+		//see description above! default: filterOnInputList = false
+		if(!filterOnInputList) fileListFunction = returnedFileList; 
 		} else skippedFilter++;
 	} 
 if (skippedFilter == filterStrings.length) returnedFileList = fileListFunction;	//if no filter condition is selected
