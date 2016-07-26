@@ -50,6 +50,9 @@ run("Close All");
 //set variables
 batchMode = false;
 availableProjectionTerms = newArray("Max Intensity", "Sum Slices", "Average Intensity", "Min Intensity", "Standard Deviation", "Median");
+defaultFilterStrings = newArray("DC_sCMOS #","SC_BP","");
+print("Files containing these strings will be automatically filtered out:");
+Array.print(defaultFilterStrings);
 
 //set array variables
 var fileExtension = ".tif";                                                  //pre-definition of extension
