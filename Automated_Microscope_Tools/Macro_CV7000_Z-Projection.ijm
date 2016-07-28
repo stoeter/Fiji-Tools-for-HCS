@@ -53,6 +53,7 @@ availableProjectionTerms = newArray("Max Intensity", "Sum Slices", "Average Inte
 defaultFilterStrings = newArray("DC_sCMOS #","SC_BP","");
 print("Files containing these strings will be automatically filtered out:");
 Array.print(defaultFilterStrings);
+saveStack = false;
 
 //set array variables
 var fileExtension = ".tif";                                                  //pre-definition of extension
@@ -90,11 +91,13 @@ Dialog.create("Set projection type");
 Dialog.addChoice("Projection:", availableProjectionTerms);	//set number of images in one row
 Dialog.addNumber("Lowest plane:", 1);
 Dialog.addNumber("Highest plane:", stackSize);
-Dialog.addCheckbox("Set batch mode (hide images)?", batchMode);	//if checke no images will be displayed
+Dialog.addCheckbox("Save Z-stack instead of projection?", saveStack);	//if checked no projection will be done and image will be saves as stack
+Dialog.addCheckbox("Set batch mode (hide images)?", batchMode);	//if checked no images will be displayed
 Dialog.show();
 projectionType = Dialog.getChoice();
 Zstart = Dialog.getNumber();
 Zstop = Dialog.getNumber();
+saveStack = Dialog.getCheckbox();
 batchMode = Dialog.getCheckbox();
 print("Selected projection type:", projectionType, "starting from plane", Zstart, "until plane",Zstop);
 
@@ -121,13 +124,17 @@ print("well-field (" + (currentWellField + 1) + "/" + wellFieldList.length + ") 
 			} //end for all images per channel	
 		//waitForUser("done");	
 		run("Images to Stack", "name=Stack title=[] use");
-		run("Z Project...", "start=" + Zstart + " stop=" + Zstop + " projection=[" + projectionType + "]");
+		if (!saveStack) run("Z Project...", "start=" + Zstart + " stop=" + Zstop + " projection=[" + projectionType + "]");
 		outputFileName = substring(currentImage,0,lengthOf(currentImage)-9) + "all" + substring(currentImage,lengthOf(currentImage)-7,lengthOf(currentImage));
 		saveAs("Tiff", outputPath + outputFileName);
 		close();  //Z projection
-		print("saved projection as " + outputPath + outputFileName);  //to log window
-		selectWindow("Stack"); //stack
-		close();
+		if (!saveStack) {
+			print("saved projection as " + outputPath + outputFileName);  //to log window
+			selectWindow("Stack"); //stack
+			close();
+			} else {
+			print("saved image stack as " + outputPath + outputFileName);  //to log window	
+			}
 		} //end for all channels in well			
 	saveLog(outputPath + "Log_temp_" + tempLogFileNumber + ".txt");
 	}  //end for all wells
