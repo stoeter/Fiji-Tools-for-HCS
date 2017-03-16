@@ -116,24 +116,32 @@ print("well-field (" + (currentWellField + 1) + "/" + wellFieldList.length + ") 
 		for (currentFile = 0; currentFile < wellChannelFileList.length; currentFile++) {
 			//image sequence & regEx would be possible, but it seems to be slow: run("Image Sequence...", "open=Y:\\correctedimages\\Martin\\150716-wormEmbryo-Gunar-test2x3-lowLaser_20150716_143710\\150716-wormEmbryo-6half-days-old\\ file=(_B03_.*C01) sort");
 			IJ.redirectErrorMessages();
-			open(wellChannelFileList[currentFile]);
-			currentImage = getTitle();
+			if (File.exists(wellChannelFileList[currentFile])) {
+				open(wellChannelFileList[currentFile]);
+				currentImage = getTitle();
+				print("opened (" + (currentFile + 1) + "/" + wellChannelFileList.length + "):", wellChannelFileList[currentFile]);  //to log window
+				} else {
+				print("file not found (" + (currentFile + 1) + "/" + wellChannelFileList.length + "):", wellChannelFileList[currentFile]);  //to log window
+				}
 			showProgress(currentFile / wellChannelFileList.length);
 	       	showStatus("processing" + fileList[currentFile]);
-			print("opened (" + (currentFile + 1) + "/" + wellChannelFileList.length + "):", wellChannelFileList[currentFile]);  //to log window
 			} //end for all images per channel	
 		//waitForUser("done");	
-		run("Images to Stack", "name=Stack title=[] use");
-		if (!saveStack) run("Z Project...", "start=" + Zstart + " stop=" + Zstop + " projection=[" + projectionType + "]");
-		outputFileName = substring(currentImage,0,lengthOf(currentImage)-9) + "all" + substring(currentImage,lengthOf(currentImage)-7,lengthOf(currentImage));
-		saveAs("Tiff", outputPath + outputFileName);
-		close();  //Z projection
-		if (!saveStack) {
-			print("saved projection as " + outputPath + outputFileName);  //to log window
-			selectWindow("Stack"); //stack
-			close();
-			} else {
-			print("saved image stack as " + outputPath + outputFileName);  //to log window	
+		if (nImages > 1) {
+			run("Images to Stack", "name=Stack title=[] use");
+			if (!saveStack) run("Z Project...", "start=" + Zstart + " stop=" + Zstop + " projection=[" + projectionType + "]");
+			outputFileName = substring(currentImage,0,lengthOf(currentImage)-9) + "all" + substring(currentImage,lengthOf(currentImage)-7,lengthOf(currentImage));
+			saveAs("Tiff", outputPath + outputFileName);
+			close();  //Z projection
+			if (!saveStack) {
+				print("saved projection as " + outputPath + outputFileName);  //to log window
+				selectWindow("Stack"); //stack
+				close();
+				} else {
+				print("saved image stack as " + outputPath + outputFileName);  //to log window	
+				}
+			} else {  //end if images are open
+			run("Close All");
 			}
 		} //end for all channels in well			
 	saveLog(outputPath + "Log_temp_" + tempLogFileNumber + ".txt");
