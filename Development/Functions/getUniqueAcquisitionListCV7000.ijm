@@ -1,5 +1,5 @@
 //function returnes the unique acquisition numbers of an array of CV7000 files
-//example: myUniqueWells = getUniqueAcquisitionListCV7000(myList, true);
+//example: myUniqueAcquisitions = getUniqueAcquisitionListCV7000(myList, true);
 function getUniqueAcquisitionListCV7000(inputArray, displayList) {
 if(inputArray.length < 1) {
 	print("No wells acquisition number found!");
