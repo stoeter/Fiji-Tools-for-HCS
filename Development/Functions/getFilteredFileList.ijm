@@ -15,7 +15,7 @@ for (i = 0; i < filterStrings.length; i++) {
 			if (filterTerms[i] == "include" && indexOf(fileListFunction[j],filterStrings[i]) != -1) returnedFileList = Array.concat(returnedFileList,fileListFunction[j]);
 			if (filterTerms[i] == "exclude" && indexOf(fileListFunction[j],filterStrings[i]) <= 0) returnedFileList = Array.concat(returnedFileList,fileListFunction[j]);
 			}
-		print(returnedFileList.length + " files found after filter: " + filterTerms[i] + " text " + filterStrings[i] + "."); 
+		print(returnedFileList.length + " file(s) found after filter: " + filterTerms[i] + " text " + filterStrings[i] + "."); 
 		if (displayList) {Array.show("List of files - after filtering for " + filterStrings[i], returnedFileList);}
 		//see description above! default: filterOnInputList = false
 		if(!filterOnInputList) fileListFunction = returnedFileList; 

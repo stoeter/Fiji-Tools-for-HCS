@@ -6,7 +6,7 @@ if(lengthOf(fileExtension) > 0) {
 	for (i = 0; i < fileListFunction.length; i++) {
 		if (endsWith(fileListFunction[i],fileExtension)) returnedFileList = Array.concat(returnedFileList,fileListFunction[i]);
 		}
-	print(returnedFileList.length + " files found with extension " + fileExtension + ".");
+	print(returnedFileList.length + " file(s) found with extension " + fileExtension + ".");
 	if (displayList) {Array.show("All files - filtered for " + fileExtension, returnedFileList);} 
 	} else {
 	returnedFileList = fileListFunction;	
