@@ -28,8 +28,6 @@ Dialog.addHelp(macroHtml);
 Dialog.show;
 
 //choose folders
-//var inputPath = "T:\\projects\\Other_small_projects\\Shamba_PGL3_droplets\\cv7000images\\150923-PGL3-salts-2ndTimePoint_20150923_124739\\150923-PGL3-salts-2ndTimePoint\\";
-//var outputPath = "C:\\Users\\stoeter\\Desktop\\TestDeleteFolder\\"; 
 inputPath = getDirectory("Choose image folder... ");
 outputPath = getDirectory("Choose result image folder... or create a folder");
 printPaths = "inputPath = \"" + inputPath + "\";\noutputPath = \"" + outputPath + "\";";
@@ -207,7 +205,7 @@ for (i = 0; i < filterStrings.length; i++) {
 			if (filterTerms[i] == "include" && indexOf(fileListFunction[j],filterStrings[i]) != -1) returnedFileList = Array.concat(returnedFileList,fileListFunction[j]);
 			if (filterTerms[i] == "exclude" && indexOf(fileListFunction[j],filterStrings[i]) <= 0) returnedFileList = Array.concat(returnedFileList,fileListFunction[j]);
 			}
-		print(returnedFileList.length + " files found after filter: " + filterTerms[i] + " text " + filterStrings[i] + "."); 
+		print(returnedFileList.length + " file(s) found after filter: " + filterTerms[i] + " text " + filterStrings[i] + "."); 
 		if (displayList) {Array.show("List of files - after filtering for " + filterStrings[i], returnedFileList);}
 		//see description above! default: filterOnInputList = false
 		if(!filterOnInputList) fileListFunction = returnedFileList; 
@@ -235,7 +233,7 @@ for (i=0; i < fileListFunction.length; i++) {
 		}
 	}
 if(inputPathFunction == inputPath) { //if local variable is equal to global path variable = if path is folder and NOT subfolder
-	print(returnedFileList.length + " files found in selected folder and subfolders."); 	
+	print(returnedFileList.length + " file(s) found in selected folder and subfolders."); 	
 	if (displayList) {Array.show("All files - all",returnedFileList);} 	
 	}
 return returnedFileList;
@@ -249,7 +247,7 @@ if(lengthOf(fileExtension) > 0) {
 	for (i = 0; i < fileListFunction.length; i++) {
 		if (endsWith(fileListFunction[i],fileExtension)) returnedFileList = Array.concat(returnedFileList,fileListFunction[i]);
 		}
-	print(returnedFileList.length + " files found with extension " + fileExtension + ".");
+	print(returnedFileList.length + " file(s) found with extension " + fileExtension + ".");
 	if (displayList) {Array.show("All files - filtered for " + fileExtension, returnedFileList);} 
 	} else {
 	returnedFileList = fileListFunction;	
@@ -265,7 +263,7 @@ returnedList = newArray(0); //this list stores all items of the input list that 
 for (i = 0; i < inputList.length; i++) {
 	if (indexOf(inputList[i],filterStringFunction) != -1) returnedList = Array.concat(returnedList,inputList[i]);
 	}
-print(returnedList.length + " files found after filtering: " + filterStringFunction); 
+print(returnedList.length + " file(s) found after filtering: " + filterStringFunction); 
 if (displayList) {Array.show("List after filtering for " + filterStringFunction, returnedFileList);}
 return returnedList;
 }
@@ -297,7 +295,7 @@ for (i = 1; i < inputArray.length; i++) {
 		}		
 	if (valueUnique) returnedWellList = Array.concat(returnedWellList, currentWell);  //if value was not found in array of unique values add it to the end of the array of unique values
 	}
-print(returnedWellList.length + " wells found."); 
+print(returnedWellList.length + " well(s) found."); 
 Array.sort(returnedWellList);
 if (displayList) {Array.show("List of " + returnedWellList.length + " unique wells", returnedWellList);}	
 return returnedWellList;
@@ -333,7 +331,7 @@ for (i = 0; i < inputArray.length; i++) {
 	//print("final:", currentWellField, valueUnique, returnedWellFieldList.length);
 	if (valueUnique) returnedWellFieldList = Array.concat(returnedWellFieldList, currentWellField);  //if value was not found in array of unique values add it to the end of the array of unique values
 	}
-print(returnedWellFieldList.length + " wells fields found."); 
+print(returnedWellFieldList.length + " well field(s) found."); 
 Array.sort(returnedWellFieldList);
 if (displayList) {Array.show("List of " + returnedWellFieldList.length + " unique well fields", returnedWellFieldList);}	
 return returnedWellFieldList;
@@ -357,7 +355,7 @@ for (i = 0; i < inputArray.length; i++) {
 		}  //end while
 	if (valueUnique) returnedFieldList = Array.concat(returnedFieldList, currentField);  //if value was not found in array of unique values add it to the end of the array of unique values
 	}
-print(returnedFieldList.length + " fields found."); 
+print(returnedFieldList.length + " field(s) found."); 
 Array.sort(returnedFieldList);
 if (displayList) {Array.show("List of " + returnedFieldList.length + " unique fields", returnedFieldList);}	
 return returnedFieldList;
@@ -381,7 +379,7 @@ for (i = 1; i < inputArray.length; i++) {
 		}  //end while
 	if (valueUnique) returnedChannelList = Array.concat(returnedChannelList, currentChannel);  //if value was not found in array of unique values add it to the end of the array of unique values
 	}
-print(returnedChannelList.length + " channels found."); 
+print(returnedChannelList.length + " channel(s) found."); 
 Array.sort(returnedChannelList);
 if (displayList) {Array.show("List of " + returnedChannelList.length + " unique channels", returnedChannelList);}	
 return returnedChannelList;
