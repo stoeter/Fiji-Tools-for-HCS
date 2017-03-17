@@ -1,23 +1,27 @@
-//function Show-Help-and-Functions is collection of functions
-macroName = "Show-Help-and-Functions";
+//function Show_Help_and_Functions is collection of functions
+macroName = "Show_Help_and_Functions";
 macroShortDescription = "This macro writes links (URLs) to the log window.";
 macroDescription = "This macro writes links (URLs) to the log window." +
 	"<br>Copy/paste into web browser to access the functions stored on GitHub."
-macroRelease = "second release 10-03-2015 by Martin Stöter (stoeter(at)mpi-cbg.de)";
-macroHelpURL = "https://github.com/stoeter/Fiji-Tools-for-HCS/wiki";
+macroRelease = "third release 11-04-2016 by Martin Stöter (stoeter(at)mpi-cbg.de)";
+generalHelpURL = "https://github.com/stoeter/Fiji-Tools-for-HCS/wiki";
+macroHelpURL = generalHelpURL + "/" + macroName;
 macroHtml = "<html>" 
 	+"<font color=red>" + macroName + "\n" + macroRelease + "</font> <br> <br>"
 	+"<font color=black>" + macroDescription + "</font> <br> <br>"
 	+"<font color=black>Check for more help on this web page:</font> <br>"
 	+"<font color=blue>" + macroHelpURL + "</font> <br>"
-	+"<font color=black>...get this URL from Log window!</font>"
+	+"<font color=black>General info:</font> <br>"
+	+"<font color=blue>" + generalHelpURL + "</font> <br>"
+	+"<font color=black>...get these URLs from Log window!</font> <br>"
     +"</font>";
 
 //print macro name and current time to Log window
 getDateAndTime(year, month, dayOfWeek, dayOfMonth, hour, minute, second, msec); month++;
 print("\\Clear");
 print(macroName,"\nStart:",year+"-"+month+"-"+dayOfMonth+", "+hour+"-"+minute+"-"+second);
-print("More help here:", macroHelpURL);
+print(macroHelpURL);
+print(generalHelpURL);
 
 //start macro
 Dialog.create("Fiji macro: " + macroName);
@@ -60,11 +64,11 @@ function getFileListSubfolder(inputPathFunction, displayList) {
 fileListFunction = getFileList(inputPathFunction);  //read file list
 Array.sort(fileListFunction);
 returnedFileList = newArray(0);     //this list stores all found files and is returned at the end of the function
-for (i=0; i < fileListFunction.length; i++) {
+for (i = 0; i < fileListFunction.length; i++) {
 	if ((File.separator == "\\") && (endsWith(fileListFunction[i], "/"))) fileListFunction[i] = replace(fileListFunction[i],"/",File.separator); //fix windows/Fiji File.separator bug
 	if (endsWith(fileListFunction[i], File.separator)) {   //if it is a folder
 		returnedFileListTemp = newArray(0);
-		returnedFileListTemp = getFileListSubfolder(inputPathFunction + fileListFunction[i],displayList);
+		returnedFileListTemp = getFileListSubfolder(inputPathFunction + fileListFunction[i], displayList);
 		returnedFileList = Array.concat(returnedFileList, returnedFileListTemp);
 		} else {  									//if it is a file
 		returnedFileList = Array.concat(returnedFileList, inputPathFunction + fileListFunction[i]);
@@ -72,7 +76,7 @@ for (i=0; i < fileListFunction.length; i++) {
 		}
 	}
 if(inputPathFunction == inputPath) { //if local variable is equal to global path variable = if path is folder and NOT subfolder
-	print(returnedFileList.length + " files found in selected folder and subfolders."); 	
+	print(returnedFileList.length + " file(s) found in selected folder and subfolders."); 	
 	if (displayList) {Array.show("All files - all",returnedFileList);} 	
 	}
 return returnedFileList;
@@ -86,7 +90,7 @@ if(lengthOf(fileExtension) > 0) {
 	for (i = 0; i < fileListFunction.length; i++) {
 		if (endsWith(fileListFunction[i],fileExtension)) returnedFileList = Array.concat(returnedFileList,fileListFunction[i]);
 		}
-	print(returnedFileList.length + " files found with extension " + fileExtension + ".");
+	print(returnedFileList.length + " file(s) found with extension " + fileExtension + ".");
 	if (displayList) {Array.show("All files - filtered for " + fileExtension, returnedFileList);} 
 	} else {
 	returnedFileList = fileListFunction;	
@@ -111,7 +115,7 @@ for (i = 0; i < filterStrings.length; i++) {
 			if (filterTerms[i] == "include" && indexOf(fileListFunction[j],filterStrings[i]) != -1) returnedFileList = Array.concat(returnedFileList,fileListFunction[j]);
 			if (filterTerms[i] == "exclude" && indexOf(fileListFunction[j],filterStrings[i]) <= 0) returnedFileList = Array.concat(returnedFileList,fileListFunction[j]);
 			}
-		print(returnedFileList.length + " files found after filter: " + filterTerms[i] + " text " + filterStrings[i] + "."); 
+		print(returnedFileList.length + " file(s) found after filter: " + filterTerms[i] + " text " + filterStrings[i] + "."); 
 		if (displayList) {Array.show("List of files - after filtering for " + filterStrings[i], returnedFileList);}
 		//see description above! default: filterOnInputList = false
 		if(!filterOnInputList) fileListFunction = returnedFileList; 
@@ -129,7 +133,7 @@ returnedList = newArray(0); //this list stores all items of the input list that 
 for (i = 0; i < inputList.length; i++) {
 	if (indexOf(inputList[i],filterStringFunction) != -1) returnedList = Array.concat(returnedList,inputList[i]);
 	}
-print(returnedList.length + " files found after filtering: " + filterStringFunction); 
+print(returnedList.length + " file(s) found after filtering: " + filterStringFunction); 
 if (displayList) {Array.show("List after filtering for " + filterStringFunction, returnedFileList);}
 return returnedList;
 }
@@ -155,6 +159,34 @@ function getNumberToString(number, decimalPlaces, lengthNumberString) {
 numberString = "000000000000" + toString(number, decimalPlaces);  //convert to number to string and add zeros in the front
 numberString = substring(numberString, lengthOf(numberString) - lengthNumberString, lengthOf(numberString)); //shorten string to lengthNumberString
 return numberString;
+}
+
+//function returnes the unique acquisition numbers of an array of CV7000 files
+//example: myUniqueAcquisitions = getUniqueAcquisitionListCV7000(myList, true);
+function getUniqueAcquisitionListCV7000(inputArray, displayList) {
+if(inputArray.length < 1) {
+	print("No wells acquisition number found!");
+	return newArray(0);
+	}
+currentAcquisition = substring(inputArray[0],lastIndexOf(inputArray[0],"_T00")+13,lastIndexOf(inputArray[0],"_T00")+16);   //first acquisition found
+returnedAcquisitionList = Array.concat(currentAcquisition);     //this list stores all unique cquisitions found and is returned at the end of the function
+for (i = 1; i < inputArray.length; i++) {
+	j = 0;									//counter for returned cquisition list
+	valueUnique = true;						//as long as value was not found in array of unique values
+	while (valueUnique && (returnedAcquisitionList.length > j)) {   //as long as value was not found in array of unique values and end of array is not reached
+		currentAcquisition = substring(inputArray[i],lastIndexOf(inputArray[i],"_T00")+13,lastIndexOf(inputArray[i],"_T00")+16);
+		if(returnedAcquisitionList[j] == currentAcquisition) {
+			valueUnique = false;			//if value was found in array of unique values stop while loop
+			} else {
+			j++;
+			}
+		}  //end while
+	if (valueUnique) returnedAcquisitionList = Array.concat(returnedAcquisitionList, currentAcquisition);  //if value was not found in array of unique values add it to the end of the array of unique values
+	}
+print(returnedAcquisitionList.length + " acquisition numbers found."); 
+Array.sort(returnedAcquisitionList);
+if (displayList) {Array.show("List of " + returnedAcquisitionList.length + " unique acquisition numbers", returnedAcquisitionList);}	
+return returnedAcquisitionList;
 }
 
 //function returnes the unique values of an array in alphabetical order
@@ -187,7 +219,7 @@ if(inputArray.length < 1) {
 	return newArray(0);
 	}
 currentChannel = substring(inputArray[0],lastIndexOf(inputArray[0],".tif")-3,lastIndexOf(inputArray[0],".tif"));   //first channel found
-returnedChannelList = Array.concat(currentChannel);     //this list stores all unique channels found and is returned at the end of the function
+returnedChannelList = newArray(currentChannel);     //this list stores all unique channels found and is returned at the end of the function
 for (i = 1; i < inputArray.length; i++) {
 	j = 0;									//counter for returned channel list
 	valueUnique = true;						//as long as value was not found in array of unique values
@@ -201,7 +233,7 @@ for (i = 1; i < inputArray.length; i++) {
 		}  //end while
 	if (valueUnique) returnedChannelList = Array.concat(returnedChannelList, currentChannel);  //if value was not found in array of unique values add it to the end of the array of unique values
 	}
-print(returnedChannelList.length + " channels found."); 
+print(returnedChannelList.length + " channel(s) found."); 
 Array.sort(returnedChannelList);
 if (displayList) {Array.show("List of " + returnedChannelList.length + " unique channels", returnedChannelList);}	
 return returnedChannelList;
@@ -215,7 +247,7 @@ if(inputArray.length < 1) {
 	return newArray(0);
 	}
 currentField = substring(inputArray[0],lastIndexOf(inputArray[0],"_T00")+6,lastIndexOf(inputArray[0],"_T00")+10);   //first field found
-returnedFieldList = Array.concat(currentField);     //this list stores all unique fields found and is returned at the end of the function
+returnedFieldList = newArray(currentField);     //this list stores all unique fields found and is returned at the end of the function
 for (i = 0; i < inputArray.length; i++) {
 	j = 0;									//counter for returned field list
 	valueUnique = true;						//as long as value was not found in array of unique values
@@ -229,7 +261,7 @@ for (i = 0; i < inputArray.length; i++) {
 		}  //end while
 	if (valueUnique) returnedFieldList = Array.concat(returnedFieldList, currentField);  //if value was not found in array of unique values add it to the end of the array of unique values
 	}
-print(returnedFieldList.length + " fields found."); 
+print(returnedFieldList.length + " field(s) found."); 
 Array.sort(returnedFieldList);
 if (displayList) {Array.show("List of " + returnedFieldList.length + " unique fields", returnedFieldList);}	
 return returnedFieldList;
@@ -243,7 +275,7 @@ if(inputArray.length < 1) {
 	return newArray(0);
 	}
 currentWellField = substring(inputArray[0],lastIndexOf(inputArray[0],"_T00")-3,lastIndexOf(inputArray[0],"_T00")+10);   //first well field found
-returnedWellFieldList = Array.concat(currentWellField);     //this list stores all unique well fields found and is returned at the end of the function
+returnedWellFieldList = newArray(currentWellField);     //this list stores all unique well fields found and is returned at the end of the function
 for (i = 0; i < inputArray.length; i++) {
 	j = 0;									//counter for returned well field list
 	valueUnique = true;						//as long as value was not found in array of unique values
@@ -257,7 +289,7 @@ for (i = 0; i < inputArray.length; i++) {
 		}  //end while
 	if (valueUnique) returnedWellFieldList = Array.concat(returnedWellFieldList, currentWellField);  //if value was not found in array of unique values add it to the end of the array of unique values
 	}
-print(returnedWellFieldList.length + " wells fields found."); 
+print(returnedWellFieldList.length + " well field(s) found."); 
 Array.sort(returnedWellFieldList);
 if (displayList) {Array.show("List of " + returnedWellFieldList.length + " unique well fields", returnedWellFieldList);}	
 return returnedWellFieldList;
@@ -271,7 +303,7 @@ if(inputArray.length < 1) {
 	return newArray(0);
 	}
 currentWell = substring(inputArray[0],lastIndexOf(inputArray[0],"_T00")-3,lastIndexOf(inputArray[0],"_T00"));   //first well found
-returnedWellList = Array.concat(currentWell);     //this list stores all unique wells found and is returned at the end of the function
+returnedWellList = newArray(currentWell);     //this list stores all unique wells found and is returned at the end of the function
 for (i = 1; i < inputArray.length; i++) {
 	j = 0;									//counter for returned well list
 	valueUnique = true;						//as long as value was not found in array of unique values
@@ -285,7 +317,7 @@ for (i = 1; i < inputArray.length; i++) {
 		}  //end while
 	if (valueUnique) returnedWellList = Array.concat(returnedWellList, currentWell);  //if value was not found in array of unique values add it to the end of the array of unique values
 	}
-print(returnedWellList.length + " wells found."); 
+print(returnedWellList.length + " well(s) found."); 
 Array.sort(returnedWellList);
 if (displayList) {Array.show("List of " + returnedWellList.length + " unique wells", returnedWellList);}	
 return returnedWellList;
