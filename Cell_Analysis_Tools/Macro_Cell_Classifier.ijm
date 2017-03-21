@@ -1,5 +1,5 @@
-//Cell_Classifier
-macroName = "Cell_Classifier";
+//Cell-Classifier
+macroName = "Cell-Classifier";
 macroShortDescription = "With this Macro you can speed up clessification of cell on many images.";
 macroDescription = "This macro helps to classify cells or objects." +
 	"<br>Images will be opened in groups as stack and user can count object in the defined classes." + 
