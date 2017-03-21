@@ -1,5 +1,5 @@
-//CV7000_Make_Time_Lapse_Movies
-macroName = "CV7000_Make_Time_Lapse_Movies";
+//CV7000-Make-Time-Lapse-Movies
+macroName = "CV7000-Make-Time-Lapse-Movies";
 macroShortDescription = "This macro finds all images of well positions of CV7000 and saves them as movies.";
 macroDescription = "This macro saves time lapse images of CV7000 as movies." +
 	"<br>CV7000 images will be opened as image sequence using well, field and acquisition number as RegEx." + 

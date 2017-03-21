@@ -1,5 +1,5 @@
-//Line_Scan_Cells
-macroName = "Line_Scan_Cells";
+//Line-Scan-3D-Cells
+macroName = "Line-Scan-3D-Cells";
 macroShortDescription = "With this Macro you can speed up your line scans in 3D-stacks.";
 macroDescription = "This macro writes links (URLs) to the log window." +
 	"<br>- Select input folder" +

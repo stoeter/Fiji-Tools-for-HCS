@@ -1,5 +1,5 @@
-//Line_Scan_Cells
-macroName = "Line_Scan_Cells";
+//Line-Scan-Cells
+macroName = "Line-Scan-Cells";
 macroShortDescription = "With this Macro you can speed up your line scans.";
 macroDescription = "This macro writes links (URLs) to the log window." +
 	"<br>- Select input folder" +
