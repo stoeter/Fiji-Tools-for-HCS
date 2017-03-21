@@ -6,20 +6,24 @@ macroDescription = "This macro reads single CV7000 images of a well as .tif ." +
 	"<br>All images of a unique well, field and channel are opened and projected." +
 	"<br>All z-projection methods selectable.";
 macroRelease = "first release 06-10-2015 by Martin Stoeter (stoeter(at)mpi-cbg.de)";
-macroHelpURL = "https://github.com/stoeter/Fiji-Tools-for-HCS/wiki/Macro-" + macroName;
+generalHelpURL = "https://github.com/stoeter/Fiji-Tools-for-HCS/wiki";
+macroHelpURL = generalHelpURL + "/" + macroName;
 macroHtml = "<html>" 
 	+"<font color=red>" + macroName + "\n" + macroRelease + "</font> <br> <br>"
 	+"<font color=black>" + macroDescription + "</font> <br> <br>"
 	+"<font color=black>Check for more help on this web page:</font> <br>"
 	+"<font color=blue>" + macroHelpURL + "</font> <br>"
-	+"<font color=black>...get this URL from Log window!</font>"
+	+"<font color=black>General info:</font> <br>"
+	+"<font color=blue>" + generalHelpURL + "</font> <br>"
+	+"<font color=black>...get these URLs from Log window!</font> <br>"
     +"</font>";
-    	
+
 //print macro name and current time to Log window
 getDateAndTime(year, month, dayOfWeek, dayOfMonth, hour, minute, second, msec); month++;
 print("\\Clear");
 print(macroName,"\nStart:",year + "-" + month + "-" + dayOfMonth + ", h" + hour + "-m" + minute + "-s" + second);
 print(macroHelpURL);
+print(generalHelpURL);
 
 //start macro
 Dialog.create("Fiji macro: " + macroName);
