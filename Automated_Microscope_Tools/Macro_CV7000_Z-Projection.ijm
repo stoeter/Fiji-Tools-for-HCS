@@ -5,7 +5,7 @@ macroDescription = "This macro reads single CV7000 images of a well as .tif ." +
 	"<br>The chosen folder will be searched for images including subfolders." +
 	"<br>All images of a unique well, field and channel are opened and projected." +
 	"<br>All z-projection methods selectable.";
-macroRelease = "first release 06-10-2015 by Martin Stoeter (stoeter(at)mpi-cbg.de)";
+macroRelease = "second release 23-03-2016 by Martin Stoeter (stoeter(at)mpi-cbg.de)";
 generalHelpURL = "https://github.com/stoeter/Fiji-Tools-for-HCS/wiki";
 macroHelpURL = generalHelpURL + "/" + macroName;
 macroHtml = "<html>" 
@@ -66,7 +66,14 @@ var displayFileList = false;                                                 //s
 setDialogImageFileFilter();
 
 print("Image file filter:", filterTerms[0],filterStrings[0] + ";",filterTerms[1],filterStrings[1] + ";",filterTerms[2],filterStrings[2]);
-print("Processing file list...");
+
+displayMetaData = false;
+Dialog.create("Find meta data");
+Dialog.addCheckbox("Display unique values of meta data:", displayMetaData);	
+Dialog.show();
+displayMetaData = Dialog.getCheckbox();
+
+print("Processing file list...");
 
 //get file list ALL
 fileList = getFileListSubfolder(inputPath, displayFileList);  //read all files in subfolders
@@ -80,13 +87,14 @@ print("removing correction files from file list containing text", filterStrings[
 fileList = getFilteredFileList(fileList, false, false);
 if (fileList.length == 0) exit("No files to process");  
 
-wellList = getUniqueWellListCV7000(fileList, displayFileList);
-wellFieldList = getUniqueWellFieldListCV7000(fileList, displayFileList);
-fieldList = getUniqueFieldListCV7000(fileList, displayFileList);
-channelList = getUniqueChannelListCV7000(fileList, displayFileList);
+wellList = getUniqueWellListCV7000(fileList, displayMetaData);
+wellFieldList = getUniqueWellFieldListCV7000(fileList, displayMetaData);
+fieldList = getUniqueFieldListCV7000(fileList, displayMetaData);
+channelList = getUniqueChannelListCV7000(fileList, displayMetaData);
 print(wellList.length, "wells found\n", wellFieldList.length, "well x fields found\n", fieldList.length, "fields found\n", channelList.length, "channels found\n");
 stackSize = fileList.length / wellFieldList.length / channelList.length;
 print("Assuming stacks with ", stackSize, "planes. Please check if this is correct!");
+if(displayFileList || displayMetaData) waitForUser("Take a look at the list windows...");  //give user time to analyse the lists  
 
 //set projection type
 Dialog.create("Set projection type");
@@ -182,7 +190,7 @@ for (i = 0; i < filterStrings.length; i++) {
 	Dialog.addString((i + 1) + ") Filter this text from file list: ", filterStrings[i]);	
 	Dialog.addChoice((i + 1) + ") Files with text are included/excluded?", availableFilterTerms, filterTerms[i]);	
 	}
-Dialog.addCheckbox("Check file lists?", displayFileList);	//if check file lists will be displayed
+Dialog.addCheckbox("Display the file lists?", displayFileList);	//if check file lists will be displayed
 Dialog.show();
 fileExtension = Dialog.getString();
 for (i = 0; i < filterStrings.length; i++) {
