@@ -5,9 +5,10 @@ macroDescription = "This macro saves time lapse images of CV7000 as movies." +
 	"<br>CV7000 images will be opened as image sequence using well, field and acquisition number as RegEx." + 
 	"<br>- Select input folder" +
 	"<br>- Select ouput folder for saving files (.tif and/or .avi (select compression and frame rate))" + 
-	"<br>- Multiple acquisition numbers can be selected and will be concatenated (channel handling not yet implemented)" +
+	"<br>- Multiple acquisition numbers can be selected" +
+	"<br>- Acquisitions can be saved as separate files, as concatenated series or as merged channels" +
 	"<br>HINT: keep default search term '_T0001' (first image) for finding wells, fields and acquisitions";
-macroRelease = "first release 01-03-2017 by Martin Stöter (stoeter(at)mpi-cbg.de)";
+macroRelease = "second release 27-03-2017 by Martin Stöter (stoeter(at)mpi-cbg.de)";
 generalHelpURL = "https://github.com/stoeter/Fiji-Tools-for-HCS/wiki";
 macroHelpURL = generalHelpURL + "/" + macroName;
 macroHtml = "<html>" 
@@ -65,6 +66,8 @@ fileList = getFilteredFileList(fileList, false, displayFileList);    //filter fo
 
 uniqueWellFields = getUniqueWellFieldListCV7000(fileList, false);
 uniqueAcquisitions = getUniqueAcquisitionListCV7000(fileList, false);
+if(displayFileList) waitForUser("Take a look at the list windows...");  //give user time to analyse the lists  
+
 useAcquisitionsBooleanLists = newArray(uniqueAcquisitions.length);
 //uniqueChannels = getUniqueChannelListCV7000(fileList, true);
 //useChannelsBooleanLists = newArray(uniqueChannels.length);
@@ -72,27 +75,30 @@ useAcquisitionsBooleanLists = newArray(uniqueAcquisitions.length);
 // settings for move generation
 availableAVIcompressions = newArray("None", "JPEG", "PNG");
 framesPerSec = 5;
+availableAcquisitonOptions = newArray("Keep separate files", "Concatenate as series", "Merge as channels");
 
 Dialog.create("Settings for movie generation");
 Dialog.addCheckbox("Save as .tif?", true);
 Dialog.addCheckbox("Save as .avi?", false);
 Dialog.addChoice("Compression for .avi:", availableAVIcompressions);
+Dialog.addNumber("Frames per seconds?", framesPerSec);
 Dialog.addMessage("Select the acquisition numbers to use:");
 for (currentAcquisition = 0; currentAcquisition < uniqueAcquisitions.length; currentAcquisition++) Dialog.addCheckbox("Use acquisition " + uniqueAcquisitions[currentAcquisition], true);
 //Dialog.addMessage("Select the channels to use:");
 //for (currentChannel = 0; currentChannel < uniqueChannels.length; currentChannel++) Dialog.addCheckbox("Use acquisition " + uniqueChannels[currentChannel], true);
-Dialog.addNumber("Frames per seconds?", framesPerSec);
+Dialog.addChoice("How to treat multiple acquisitions?", availableAcquisitonOptions);
 Dialog.addCheckbox("Hide image display?", true);
 Dialog.show(); 
 saveTif = Dialog.getCheckbox();
 saveAvi = Dialog.getCheckbox();
 aviCompression = Dialog.getChoice();
+framesPerSec = Dialog.getNumber();
 for (currentAcquisition = 0; currentAcquisition < uniqueAcquisitions.length; currentAcquisition++) {
 	useAcquisitionsBooleanLists[currentAcquisition] = Dialog.getCheckbox();
 	print("Acquisition -", uniqueAcquisitions[currentAcquisition], ":", useAcquisitionsBooleanLists[currentAcquisition]);
 	}
 //for (currentChannel = 0; currentChannel < uniqueChannels.length; currentChannel++) useChannelBooleanLists[currentChannel] = Dialog.getCheckbox();
-framesPerSec = Dialog.getNumber();
+acquisitonOption = Dialog.getChoice();
 hideImages = Dialog.getCheckbox();
 print("save movie as .tif -" + saveTif + "- and as .avi -" + saveAvi + "- with", aviCompression, "compression"); 
 print("save movie with", framesPerSec, "frames per second; hide images", hideImages); 
@@ -107,26 +113,47 @@ for (currentWellField = 0; currentWellField < uniqueWellFields.length; currentWe
 	currentWell = substring(uniqueWellFields[currentWellField], 0, 3);
 	currentField = substring(uniqueWellFields[currentWellField], lengthOf(uniqueWellFields[currentWellField])-4, lengthOf(uniqueWellFields[currentWellField]));
 	imageSequenceCounter = 0;
+	mergeChannelsString = "";
 
 	for (currentAcquisition = 0; currentAcquisition < uniqueAcquisitions.length; currentAcquisition++) {
 		if (useAcquisitionsBooleanLists[currentAcquisition]) {
-			imageSequenceCounter++;  // only add one count if acquisition number ist actually enables and will be loaded 
+			imageSequenceCounter++;  // only add one count if acquisition number is actually enabled and will be loaded 
 			print("( " + (currentWellField+1) + " / " + uniqueWellFields.length + " ) open images with regex:", currentWell, currentField, uniqueAcquisitions[currentAcquisition]);
+			print("regex:" + "(.*_" + currentWell + "_.*" + currentField + ".*" + uniqueAcquisitions[currentAcquisition] + ".*)");
 			IJ.redirectErrorMessages();
-			run("Image Sequence...", "open=" + inputPath + " file=(.*_" + currentWell + "_.*" + currentField + ".*" + uniqueAcquisitions[currentAcquisition] + ".*) sort");
+			run("Image Sequence...", "open=[" + inputPath + "] file=(.*_" + currentWell + "_.*" + currentField + ".*" + uniqueAcquisitions[currentAcquisition] + ".*) sort");
 			if (nImages == imageSequenceCounter) { // see imageSequenceCounter above
 				currentImage = getTitle();
 				currentImage = currentImage + "_" + currentWell + "_" + currentField + "_" + uniqueAcquisitions[currentAcquisition];
 				rename(currentImage);
+				mergeChannelsString = mergeChannelsString + "c" + (currentAcquisition + 1) + "=[" + currentImage + "] ";
 				print("opened ", nSlices, " images:", currentImage);
 				} else {
 				print("no images found");	// run Image Sequence silently failed...
 				}
+			if (acquisitonOption == availableAcquisitonOptions[0]) {   // "Keep separate files"	
+				if (saveTif) {
+					saveAs("Tiff", outputPath + currentImage + ".tif");
+					print("saved", outputPath + currentImage + ".tif");
+					}
+				if (saveAvi) {
+					run("AVI... ", "compression=" + aviCompression + " frame=" + framesPerSec + " save=" + outputPath + currentImage + ".avi");
+					print("saved", outputPath + currentImage + ".avi");
+					}
+				}
 			} //end if
 		}  //end for acquistitions
+
+	if (acquisitonOption == availableAcquisitonOptions[1]) {   // "Concatenate as series"	
+		if (nImages > 1) run("Concatenate...", "all_open title=Movie");
+		currentImage = currentImage + "_concatenated";
+		}
+
+	if (acquisitonOption == availableAcquisitonOptions[2]) {   // "Merge as channels"	
+		if (nImages > 1) run("Merge Channels...", mergeChannelsString + "create");  //"c1=Newfolder_C03_F001_A01 c2=Newfolder_C03_F001_A02 create");
+		currentImage = currentImage + "_allChannels";
+		}
 	
-	if (nImages > 1) run("Concatenate...", "all_open title=Movie");
-		
 	//Save the image file
 	if (saveTif) {
 		saveAs("Tiff", outputPath + currentImage + ".tif");
@@ -260,7 +287,7 @@ for (i = 0; i < filterStrings.length; i++) {
 	Dialog.addString((i + 1) + ") Filter this text from file list: ", filterStrings[i]);	
 	Dialog.addChoice((i + 1) + ") Files with text are included/excluded?", availableFilterTerms, filterTerms[i]);	
 	}
-Dialog.addCheckbox("Check file lists?", displayFileList);	//if check file lists will be displayed
+Dialog.addCheckbox("Display the file lists?", displayFileList);	//if check file lists will be displayed
 Dialog.show();
 fileExtension = Dialog.getString();
 for (i = 0; i < filterStrings.length; i++) {
