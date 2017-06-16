@@ -104,22 +104,24 @@ bkgNoise = 101;
 gaussianBlur = 5;
 medianThreshold = 200;
 useCV7000fileName = true;
+availableIllumCorrImageNames = newArray("CV7000 file name in measurement folder", "CV7000 file name in Condition folder", "File name with channel");
 Dialog.create("Settings...");
 Dialog.addMessage("Specify how the illumination correction image will be calculated.\nTry first with default values...");     
 Dialog.addChoice("Type of z-projection for aggregation:",availableProjectionType, projectionType);
 Dialog.addNumber("Subtract fixed values as dark field image (0 = no subtraction):", bkgNoise);
 Dialog.addNumber("Apply smoothing on illumination correction image (0 = none):", gaussianBlur);
 Dialog.addNumber("Filter images with low intensity (= no/wrong dye images):", medianThreshold);
-Dialog.addCheckbox("Used CV7000 file name standard:", useCV7000fileName);
+Dialog.addChoice("Illumination file name standard:", availableIllumCorrImageNames);
 Dialog.show;
 projectionType = Dialog.getChoice();
 bkgNoise = Dialog.getNumber();
 gaussianBlur = Dialog.getNumber();
 medianThreshold = Dialog.getNumber();
-useCV7000fileName = Dialog.getCheckbox();
+illumfileNameStandard = Dialog.getChoice();
 
 print("type of projection:", projectionType,"; background noise:", bkgNoise, "Gaussian blur:", gaussianBlur);
 print("image with median intensity of", medianThreshold, "will be skipped...");
+print(illumfileNameStandard);
 
 setBatchMode(batchMode);
 
@@ -130,9 +132,16 @@ for (currentFile = 0; currentFile < fileListIllumCV7000.length; currentFile++) {
 	filterTerms = newArray("include", "no filtering", "no filtering"); 
 	fileListIllumCV7000channel = getFilteredFileList(fileListIllumCV7000, false, false);
 	channelFilterNames[currentFile] = substring(fileListIllumCV7000channel[0],indexOf(fileListIllumCV7000channel[0],File.separator + "SC_") + 4,indexOf(fileListIllumCV7000channel[0],File.separator + "SC_") + 12);
-	cv7000illumCorrImageNames[currentFile] = substring(fileListIllumCV7000channel[0],indexOf(fileListIllumCV7000channel[0],File.separator + "SC_") + 1,lengthOf(fileListIllumCV7000channel[0]));
 	print("CH0" + (currentFile + 1), "is channel", channelFilterNames[currentFile]);
-	print(cv7000illumCorrImageNames[currentFile]);
+	if(illumfileNameStandard == availableIllumCorrImageNames[0]) {  // standard for measurement folder
+		cv7000illumCorrImageNames[currentFile] = substring(fileListIllumCV7000channel[0],indexOf(fileListIllumCV7000channel[0],File.separator + "SC_") + 1,lengthOf(fileListIllumCV7000channel[0]));
+		print(cv7000illumCorrImageNames[currentFile]);
+		}
+	if(illumfileNameStandard == availableIllumCorrImageNames[1]) {  // standard for 'Condition' folder
+		cv7000illumCorrImageNames[currentFile] = substring(fileListIllumCV7000channel[0],indexOf(fileListIllumCV7000channel[0],File.separator + "SC_") + 4,lengthOf(fileListIllumCV7000channel[0]) - 9 ) + ".tif";
+		print(cv7000illumCorrImageNames[currentFile]);
+		}
+	if(illumfileNameStandard == availableIllumCorrImageNames[2]) print("File name with channel will be used...");		
 	}
 
 numberOfDyeImagesPerChannel = (fileListIllumCV7000.length + 1)/(channelList.length + 1);    //calc number of dye images per channel by dividing total number of images by number of channels
@@ -148,7 +157,8 @@ for (currentChannel = 0; currentChannel < channelList.length; currentChannel++) 
 	// all files for one channel
 	for (currentFile = 0; currentFile < fileListChannel.length; currentFile++) {   
 		IJ.redirectErrorMessages();
-		open(fileListChannel[currentFile]);
+		//open(fileListChannel[currentFile]);
+		run("Bio-Formats", "open=[" + fileListChannel[currentFile] + "] autoscale color_mode=Default view=[Standard ImageJ] stack_order=XYCZT");
 		currentImage = getTitle();
 		print("opened (" + (currentFile + 1) + "/" + fileListChannel.length + "):", fileListChannel[currentFile]);  //to log window
 		run("Measure");
@@ -188,14 +198,16 @@ for (currentChannel = 0; currentChannel < channelList.length; currentChannel++) 
 	setMinAndMax(0, 65535);  //scale back to 16-bit image
 	run("16-bit");
 	resetMinAndMax();
+	run("Properties...", "channels=1 slices=1 frames=1 unit=pixel pixel_width=1.0000000 pixel_height=1.0000000 voxel_depth=1.0000000");
 	//save illumination correction image
-	if (useCV7000fileName) {
-		fileName = cv7000illumCorrImageNames[currentChannel];
-		} else {
+	if(illumfileNameStandard == availableIllumCorrImageNames[2]) {  // not standard for CV7000 measurement or "Condition' folder
 		fileName = "IlluminationCorrection_" + fileName + "_" + channelFilterNames[currentChannel] + ".tif";
+		} else {
+		fileName = cv7000illumCorrImageNames[currentChannel];
 		}
 	selectWindow(zProjectionImage);
-	saveAs("Tiff", outputPath + fileName);
+	//saveAs("Tiff", outputPath + fileName);
+	run("OME-TIFF...", "save=" + outputPath + fileName + " compression=Uncompressed");
 	print("saved illumination correction image for channel", channelFilterNames[currentChannel] + ":", fileName);
 	close();  //saved zProjectionImage
 	close(firstImage);
