@@ -64,8 +64,10 @@ fileList = getFileListSubfolder(inputPath, displayFileList);  //read all files i
 fileList = getFileType(fileList, fileExtension, displayFileList);
 fileList = getFilteredFileList(fileList, false, displayFileList);    //filter for strings
 
-uniqueWellFields = getUniqueWellFieldListCV7000(fileList, false);
-uniqueAcquisitions = getUniqueAcquisitionListCV7000(fileList, false);
+uniqueWellFields = getUniqueWellFieldListCV7000(fileList, displayFileList);
+uniqueAcquisitions = getUniqueAcquisitionListCV7000(fileList, displayFileList);
+uniqueTimeLines = getUniqueTimeLineListCV7000(fileList, displayFileList);
+uniqueTimeLineAcquisitions = getUniqueTimeLineAcquisitionListCV7000(fileList, displayFileList);
 if(displayFileList) waitForUser("Take a look at the list windows...");  //give user time to analyse the lists  
 
 useAcquisitionsBooleanLists = newArray(uniqueAcquisitions.length);
@@ -76,6 +78,7 @@ useAcquisitionsBooleanLists = newArray(uniqueAcquisitions.length);
 availableAVIcompressions = newArray("None", "JPEG", "PNG");
 framesPerSec = 5;
 availableAcquisitonOptions = newArray("Keep separate files", "Concatenate as series", "Merge as channels");
+availableTimeLineOptions = newArray("Ignore time lines", "Process time lines separately");
 
 Dialog.create("Settings for movie generation");
 Dialog.addCheckbox("Save as .tif?", true);
@@ -87,6 +90,7 @@ for (currentAcquisition = 0; currentAcquisition < uniqueAcquisitions.length; cur
 //Dialog.addMessage("Select the channels to use:");
 //for (currentChannel = 0; currentChannel < uniqueChannels.length; currentChannel++) Dialog.addCheckbox("Use acquisition " + uniqueChannels[currentChannel], true);
 Dialog.addChoice("How to treat multiple acquisitions?", availableAcquisitonOptions);
+Dialog.addChoice("How to treat multiple time lines?", availableTimeLineOptions);
 Dialog.addCheckbox("Hide image display?", true);
 Dialog.show(); 
 saveTif = Dialog.getCheckbox();
@@ -99,10 +103,11 @@ for (currentAcquisition = 0; currentAcquisition < uniqueAcquisitions.length; cur
 	}
 //for (currentChannel = 0; currentChannel < uniqueChannels.length; currentChannel++) useChannelBooleanLists[currentChannel] = Dialog.getCheckbox();
 acquisitonOption = Dialog.getChoice();
+timeLineOption = Dialog.getChoice();
 hideImages = Dialog.getCheckbox();
 print("save movie as .tif -" + saveTif + "- and as .avi -" + saveAvi + "- with", aviCompression, "compression"); 
+print("Treat acquisitions:" + acquisitonOption + ", treat time lines:" + timeLineOption); 
 print("save movie with", framesPerSec, "frames per second; hide images", hideImages); 
-
 
 //start processing...
 setBatchMode(hideImages);
@@ -112,58 +117,76 @@ for (currentWellField = 0; currentWellField < uniqueWellFields.length; currentWe
 	// open well field data one after the other...
 	currentWell = substring(uniqueWellFields[currentWellField], 0, 3);
 	currentField = substring(uniqueWellFields[currentWellField], lengthOf(uniqueWellFields[currentWellField])-4, lengthOf(uniqueWellFields[currentWellField]));
-	imageSequenceCounter = 0;
+
 	mergeChannelsString = "";
-
-	for (currentAcquisition = 0; currentAcquisition < uniqueAcquisitions.length; currentAcquisition++) {
-		if (useAcquisitionsBooleanLists[currentAcquisition]) {
-			imageSequenceCounter++;  // only add one count if acquisition number is actually enabled and will be loaded 
-			print("( " + (currentWellField+1) + " / " + uniqueWellFields.length + " ) open images with regex:", currentWell, currentField, uniqueAcquisitions[currentAcquisition]);
-			print("regex:" + "(.*_" + currentWell + "_.*" + currentField + ".*" + uniqueAcquisitions[currentAcquisition] + ".*)");
-			IJ.redirectErrorMessages();
-			run("Image Sequence...", "open=[" + inputPath + "] file=(.*_" + currentWell + "_.*" + currentField + ".*" + uniqueAcquisitions[currentAcquisition] + ".*) sort");
-			if (nImages == imageSequenceCounter) { // see imageSequenceCounter above
-				currentImage = getTitle();
-				currentImage = currentImage + "_" + currentWell + "_" + currentField + "_" + uniqueAcquisitions[currentAcquisition];
-				rename(currentImage);
-				mergeChannelsString = mergeChannelsString + "c" + (currentAcquisition + 1) + "=[" + currentImage + "] ";
-				print("opened ", nSlices, " images:", currentImage);
-				} else {
-				print("no images found");	// run Image Sequence silently failed...
-				}
-			if (acquisitonOption == availableAcquisitonOptions[0]) {   // "Keep separate files"	
-				if (saveTif) {
-					saveAs("Tiff", outputPath + currentImage + ".tif");
-					print("saved", outputPath + currentImage + ".tif");
-					}
-				if (saveAvi) {
-					run("AVI... ", "compression=" + aviCompression + " frame=" + framesPerSec + " save=" + outputPath + currentImage + ".avi");
-					print("saved", outputPath + currentImage + ".avi");
-					}
-				}
-			} //end if
-		}  //end for acquistitions
-
-	if (acquisitonOption == availableAcquisitonOptions[1]) {   // "Concatenate as series"	
-		if (nImages > 1) run("Concatenate...", "all_open title=Movie");
-		currentImage = currentImage + "_concatenated";
+	if (acquisitonOption ==  "Ignore time lines") {
+		uniqueTimeLines = newArray("");
+		//uniqueTimeLineAcquisitions;  // combine time line with acquisitions => unique values and iteration over regex is combination of time line and acquisition (TimeLineAcquisitions)
+//		if(displayFileList) {
+//			Array.show("List of " + uniqueTimeLineAcquisitions.length + " unique time line acquisitions", uniqueTimeLineAcquisitions);
+//			waitForUser("Take a look at the list windows...");  //give user time to analyse the lists  
+//			}
 		}
+		
+	for (currentTimeLine = 0; currentTimeLine < uniqueTimeLines.length; currentTimeLine++) {
+		imageSequenceCounter = 0;
+		for (currentAcquisition = 0; currentAcquisition < uniqueAcquisitions.length; currentAcquisition++) {
+			if (useAcquisitionsBooleanLists[currentAcquisition]) {
+				imageSequenceCounter++;  // only add one count if acquisition number is actually enabled and will be loaded 
+				print("( " + (currentWellField+1) + " / " + uniqueWellFields.length + " ) open images with regex:", currentWell, currentField, uniqueTimeLines[currentTimeLine], uniqueAcquisitions[currentAcquisition]);
+				regexString = "(.*_" + currentWell + "_.*" + currentField + ".*" + uniqueTimeLines[currentTimeLine] + uniqueAcquisitions[currentAcquisition] + ".*)";
+				print("regex:" + "(.*_" + currentWell + "_.*" + currentField + ".*" + uniqueTimeLines[currentTimeLine] + uniqueAcquisitions[currentAcquisition] + ".*)");
+				IJ.redirectErrorMessages();
+				run("Image Sequence...", "open=[" + inputPath + "] file=" + regexString + " sort");
+				if (nImages == imageSequenceCounter) { // see imageSequenceCounter above
+					currentImage = getTitle();
+					currentImage = currentImage + "_" + currentWell + "_" + currentField + "_" + uniqueTimeLines[currentTimeLine] + uniqueAcquisitions[currentAcquisition];
+					rename(currentImage);
+					mergeChannelsString = mergeChannelsString + "c" + (currentAcquisition + 1) + "=[" + currentImage + "] ";
+					print("opened ", nSlices, " images:", currentImage);
+					} else {
+					print("no images found");	// run Image Sequence silently failed...
+					}
+				if (acquisitonOption == availableAcquisitonOptions[0]) {   // "Keep separate files"	
+					if (saveTif) {
+						saveAs("Tiff", outputPath + currentImage + ".tif");
+						print("saved", outputPath + currentImage + ".tif");
+						}
+					if (saveAvi) {
+						run("AVI... ", "compression=" + aviCompression + " frame=" + framesPerSec + " save=" + outputPath + currentImage + ".avi");
+						print("saved", outputPath + currentImage + ".avi");
+						}
+					}
+				} //end if
+			}  //end for acquistitions
 
-	if (acquisitonOption == availableAcquisitonOptions[2]) {   // "Merge as channels"	
-		if (nImages > 1) run("Merge Channels...", mergeChannelsString + "create");  //"c1=Newfolder_C03_F001_A01 c2=Newfolder_C03_F001_A02 create");
-		currentImage = currentImage + "_allChannels";
-		}
+		if (acquisitonOption == availableAcquisitonOptions[1]) {   // "Concatenate as series"	
+			if (nImages > 1) {
+				run("Concatenate...", "all_open title=Movie");
+				currentImage = currentImage + "_concatenated";
+				}
+			}
+
+		if (acquisitonOption == availableAcquisitonOptions[2]) {   // "Merge as channels"	
+			if (nImages > 1) {
+				run("Merge Channels...", mergeChannelsString + "create");  //"c1=Newfolder_C03_F001_A01 c2=Newfolder_C03_F001_A02 create");
+				currentImage = currentImage + "_allChannels";
+				}
+			}
 	
-	//Save the image file
-	if (saveTif) {
-		saveAs("Tiff", outputPath + currentImage + ".tif");
-		print("saved", outputPath + currentImage + ".tif");
+		//Save the image file
+		if (nImages > 0) { //check if regex was sucessful and images could be opened
+			if (saveTif) {
+				saveAs("Tiff", outputPath + currentImage + ".tif");
+				print("saved", outputPath + currentImage + ".tif");
+				}
+			if (saveAvi) {
+				run("AVI... ", "compression=" + aviCompression + " frame=" + framesPerSec + " save=" + outputPath + currentImage + ".avi");
+				print("saved", outputPath + currentImage + ".avi");
+				}
+			close();
+			}
 		}
-	if (saveAvi) {
-		run("AVI... ", "compression=" + aviCompression + " frame=" + framesPerSec + " save=" + outputPath + currentImage + ".avi");
-		print("saved", outputPath + currentImage + ".avi");
-		}
-	close();
 	saveLog(outputPath + "Log_temp_" + tempLogFileNumber +".txt");		
 	}  //end well fields
 
@@ -328,7 +351,7 @@ for (i = 0; i < inputArray.length; i++) {
 		}  //end while
 	if (valueUnique) returnedFieldList = Array.concat(returnedFieldList, currentField);  //if value was not found in array of unique values add it to the end of the array of unique values
 	}
-print(returnedFieldList.length + " fields found."); 
+print(returnedFieldList.length + " field(s) found."); 
 Array.sort(returnedFieldList);
 if (displayList) {Array.show("List of " + returnedFieldList.length + " unique fields", returnedFieldList);}	
 return returnedFieldList;
@@ -356,7 +379,7 @@ for (i = 0; i < inputArray.length; i++) {
 		}  //end while
 	if (valueUnique) returnedWellFieldList = Array.concat(returnedWellFieldList, currentWellField);  //if value was not found in array of unique values add it to the end of the array of unique values
 	}
-print(returnedWellFieldList.length + " wells fields found."); 
+print(returnedWellFieldList.length + " well field(s) found."); 
 Array.sort(returnedWellFieldList);
 if (displayList) {Array.show("List of " + returnedWellFieldList.length + " unique well fields", returnedWellFieldList);}	
 return returnedWellFieldList;
@@ -384,7 +407,7 @@ for (i = 1; i < inputArray.length; i++) {
 		}  //end while
 	if (valueUnique) returnedWellList = Array.concat(returnedWellList, currentWell);  //if value was not found in array of unique values add it to the end of the array of unique values
 	}
-print(returnedWellList.length + " wells found."); 
+print(returnedWellList.length + " well(s) found."); 
 Array.sort(returnedWellList);
 if (displayList) {Array.show("List of " + returnedWellList.length + " unique wells", returnedWellList);}	
 return returnedWellList;
@@ -408,23 +431,23 @@ for (i = 1; i < inputArray.length; i++) {
 		}  //end while
 	if (valueUnique) returnedChannelList = Array.concat(returnedChannelList, currentChannel);  //if value was not found in array of unique values add it to the end of the array of unique values
 	}
-print(returnedChannelList.length + " channels found."); 
+print(returnedChannelList.length + " channel(s) found."); 
 Array.sort(returnedChannelList);
 if (displayList) {Array.show("List of " + returnedChannelList.length + " unique channels", returnedChannelList);}	
 return returnedChannelList;
 }
 
 //function returnes the unique acquisition numbers of an array of CV7000 files
-//example: myUniqueWells = getUniqueAcquisitionListCV7000(myList, true);
+//example: myUniqueAcquisitions = getUniqueAcquisitionListCV7000(myList, true);
 function getUniqueAcquisitionListCV7000(inputArray, displayList) {
 if(inputArray.length < 1) {
-	print("No wells acquisition number found!");
+	print("No acquisition number found!");
 	return newArray(0);
 	}
 currentAcquisition = substring(inputArray[0],lastIndexOf(inputArray[0],"_T00")+13,lastIndexOf(inputArray[0],"_T00")+16);   //first acquisition found
-returnedAcquisitionList = Array.concat(currentAcquisition);     //this list stores all unique cquisitions found and is returned at the end of the function
+returnedAcquisitionList = Array.concat(currentAcquisition);     //this list stores all unique aquisitions found and is returned at the end of the function
 for (i = 1; i < inputArray.length; i++) {
-	j = 0;									//counter for returned cquisition list
+	j = 0;									//counter for returned aquisition list
 	valueUnique = true;						//as long as value was not found in array of unique values
 	while (valueUnique && (returnedAcquisitionList.length > j)) {   //as long as value was not found in array of unique values and end of array is not reached
 		currentAcquisition = substring(inputArray[i],lastIndexOf(inputArray[i],"_T00")+13,lastIndexOf(inputArray[i],"_T00")+16);
@@ -436,9 +459,64 @@ for (i = 1; i < inputArray.length; i++) {
 		}  //end while
 	if (valueUnique) returnedAcquisitionList = Array.concat(returnedAcquisitionList, currentAcquisition);  //if value was not found in array of unique values add it to the end of the array of unique values
 	}
-print(returnedAcquisitionList.length + " acquisition numbers found."); 
+print(returnedAcquisitionList.length + " acquisition number(s) found."); 
 Array.sort(returnedAcquisitionList);
 if (displayList) {Array.show("List of " + returnedAcquisitionList.length + " unique acquisition numbers", returnedAcquisitionList);}	
 return returnedAcquisitionList;
 }
 
+//function returnes the unique time line numbers of an array of CV7000 files
+//example: myUniqueTimeLines = getUniqueTimeLineListCV7000(myList, true);
+function getUniqueTimeLineListCV7000(inputArray, displayList) {
+if(inputArray.length < 1) {
+	print("No time line number found!");
+	return newArray(0);
+	}
+currentTimeLine = substring(inputArray[0],lastIndexOf(inputArray[0],"_T00")+10,lastIndexOf(inputArray[0],"_T00")+13);   //first time line found
+returnedTimeLineList = Array.concat(currentTimeLine);     //this list stores all unique time lines found and is returned at the end of the function
+for (i = 1; i < inputArray.length; i++) {
+	j = 0;									//counter for returned time line list
+	valueUnique = true;						//as long as value was not found in array of unique values
+	while (valueUnique && (returnedTimeLineList.length > j)) {   //as long as value was not found in array of unique values and end of array is not reached
+		currentTimeLine = substring(inputArray[i],lastIndexOf(inputArray[i],"_T00")+10,lastIndexOf(inputArray[i],"_T00")+13);
+		if(returnedTimeLineList[j] == currentTimeLine) {
+			valueUnique = false;			//if value was found in array of unique values stop while loop
+			} else {
+			j++;
+			}
+		}  //end while
+	if (valueUnique) returnedTimeLineList = Array.concat(returnedTimeLineList, currentTimeLine);  //if value was not found in array of unique values add it to the end of the array of unique values
+	}
+print(returnedTimeLineList.length + " time line number(s) found."); 
+Array.sort(returnedTimeLineList);
+if (displayList) {Array.show("List of " + returnedTimeLineList.length + " unique time line numbers", returnedTimeLineList);}	
+return returnedTimeLineList;
+}
+
+//function returnes the unique time line acquisitions of an array of CV7000 files
+//example: myUniqueTimeLineAcquisitions = getUniqueTimeLineAcquisitionListCV7000(myList, true);
+function getUniqueTimeLineAcquisitionListCV7000(inputArray, displayList) {
+if(inputArray.length < 1) {
+	print("No time line acquisition found!");
+	return newArray(0);
+	}
+currentTimeLineAcquisition = substring(inputArray[0],lastIndexOf(inputArray[0],"_T00")+10,lastIndexOf(inputArray[0],"_T00")+16);   //first time line acquisition found
+returnedTimeLineAcquisitionList = Array.concat(currentTimeLineAcquisition);     //this list stores all unique time line acquisitions found and is returned at the end of the function
+for (i = 1; i < inputArray.length; i++) {
+	j = 0;									//counter for returned time line aquisition list
+	valueUnique = true;						//as long as value was not found in array of unique values
+	while (valueUnique && (returnedTimeLineAcquisitionList.length > j)) {   //as long as value was not found in array of unique values and end of array is not reached
+		currentTimeLineAcquisition = substring(inputArray[i],lastIndexOf(inputArray[i],"_T00")+10,lastIndexOf(inputArray[i],"_T00")+16);
+		if(returnedTimeLineAcquisitionList[j] == currentTimeLineAcquisition) {
+			valueUnique = false;			//if value was found in array of unique values stop while loop
+			} else {
+			j++;
+			}
+		}  //end while
+	if (valueUnique) returnedTimeLineAcquisitionList = Array.concat(returnedTimeLineAcquisitionList, currentTimeLineAcquisition);  //if value was not found in array of unique values add it to the end of the array of unique values
+	}
+print(returnedTimeLineAcquisitionList.length + " time line acquisition(s) found."); 
+Array.sort(returnedTimeLineAcquisitionList);
+if (displayList) {Array.show("List of " + returnedTimeLineAcquisitionList.length + " unique time line acquisitions", returnedTimeLineAcquisitionList);}	
+return returnedTimeLineAcquisitionList;
+}
