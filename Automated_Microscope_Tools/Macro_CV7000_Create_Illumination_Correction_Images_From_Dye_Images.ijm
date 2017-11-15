@@ -41,7 +41,7 @@ if(outputPath != "not available") while (File.exists(outputPath + "Log_temp_" + 
 
 //initialize => default settings
 run("Set Measurements...", "area mean standard min integrated median display redirect=None decimal=3");
-run("Input/Output...", "jpeg=95 gif=-1 file=.txt copy_column copy_row save_column save_row");	
+run("Input/Output...", "jpeg=95 gif=-1 file=.txt save copy_column copy_row save_column save_row");  // set byte order to little-Endian / Intel -> 'save'
 run("Close All");
 
 ////////////////////////////////        M A C R O   C O D E         /////////////////////////////// 
@@ -143,6 +143,7 @@ for (currentFile = 0; currentFile < fileListIllumCV7000.length; currentFile++) {
 		}
 	if(illumfileNameStandard == availableIllumCorrImageNames[2]) print("File name with channel will be used...");		
 	}
+if(fileListIllumCV7000.length == 0) channelFilterNames = channelList;	//if no correction images were found and no channelNames are present then use the channel list
 
 numberOfDyeImagesPerChannel = (fileListIllumCV7000.length + 1)/(channelList.length + 1);    //calc number of dye images per channel by dividing total number of images by number of channels
 print("expected number of images per dye is", numberOfDyeImagesPerChannel);
@@ -232,7 +233,10 @@ close(firstImage);
 	
 //save results
 saveAs("Results", outputPath + "ResultsIllumCorrection.txt");
-				
+
+// set byte order again to standard
+run("Input/Output...", "jpeg=95 gif=-1 file=.txt copy_column copy_row save_column save_row");	
+
 //print current time to Log window and save log
 getDateAndTime(year, month, dayOfWeek, dayOfMonth, hour, minute, second, msec); month++;
 print("Macro executed successfully.\nEnd:",year+"-"+month+"-"+dayOfMonth+", h"+hour+"-m"+minute+"-s"+second);
