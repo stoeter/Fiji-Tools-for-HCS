@@ -7,7 +7,7 @@ macroDescription = "This macro saves time lapse images of CV7000 as movies." +
 	"<br>- Select ouput folder for saving files (.tif and/or .avi (select compression and frame rate))" + 
 	"<br>- Multiple acquisition numbers can be selected" +
 	"<br>- Acquisitions can be saved as separate files, as concatenated series or as merged channels" +
-	"<br>- If channels info can be used instead of acquisition info. " +
+	"<br>- If channel info is used acquisition info is ignored. " +
 	"<br>HINT: keep default search term '_T0001' (first image) for finding wells, fields and acquisitions";
 macroRelease = "third release 14-11-2017 by Martin Stöter (stoeter(at)mpi-cbg.de)";
 generalHelpURL = "https://github.com/stoeter/Fiji-Tools-for-HCS/wiki";
