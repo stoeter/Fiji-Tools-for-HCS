@@ -207,8 +207,8 @@ for (currentChannel = 0; currentChannel < channelList.length; currentChannel++) 
 		fileName = cv7000illumCorrImageNames[currentChannel];
 		}
 	selectWindow(zProjectionImage);
-	//saveAs("Tiff", outputPath + fileName);
-	run("OME-TIFF...", "save=" + outputPath + fileName + " compression=Uncompressed");
+	saveAs("Tiff", outputPath + fileName);   // little-Endian byte order in needs saveAs Tiff, it doesnt wor for saving OME-Tiff
+	//run("OME-TIFF...", "save=" + outputPath + fileName + " compression=Uncompressed");
 	print("saved illumination correction image for channel", channelFilterNames[currentChannel] + ":", fileName);
 	close();  //saved zProjectionImage
 	close(firstImage);
