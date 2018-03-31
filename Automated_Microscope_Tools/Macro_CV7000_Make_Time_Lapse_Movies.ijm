@@ -9,11 +9,12 @@ macroDescription = "This macro saves time lapse images of CV7000 as movies." +
 	"<br>- Acquisitions can be saved as separate files, as concatenated series or as merged channels" +
 	"<br>- If channel info is used acquisition info is ignored. " +
 	"<br>HINT: keep default search term '_T0001' (first image) for finding wells, fields and acquisitions";
-macroRelease = "third release 14-11-2017 by Martin Stöter (stoeter(at)mpi-cbg.de)";
+macroRelease = "fourth release 31-03-2018";
+macroAuthor = "by Martin Stöter (stoeter(at)mpi-cbg.de)";
 generalHelpURL = "https://github.com/stoeter/Fiji-Tools-for-HCS/wiki";
 macroHelpURL = generalHelpURL + "/" + macroName;
 macroHtml = "<html>" 
-	+"<font color=red>" + macroName + "\n" + macroRelease + "</font> <br> <br>"
+	+"<font color=red>" + macroName + "\n" + macroRelease + " " + macroAuthor + "</font> <br> <br>"
 	+"<font color=black>" + macroDescription + "</font> <br> <br>"
 	+"<font color=black>Check for more help on this web page:</font> <br>"
 	+"<font color=blue>" + macroHelpURL + "</font> <br>"
@@ -25,7 +26,7 @@ macroHtml = "<html>"
 //print macro name and current time to Log window
 getDateAndTime(year, month, dayOfWeek, dayOfMonth, hour, minute, second, msec); month++;
 print("\\Clear");
-print(macroName,"\nStart:",year+"-"+month+"-"+dayOfMonth+", "+hour+"-"+minute+"-"+second);
+print(macroName, "(" + macroRelease + ")", "\nStart:",year+"-"+month+"-"+dayOfMonth+", "+hour+"-"+minute+"-"+second);
 print(macroHelpURL);
 print(generalHelpURL);
 
@@ -177,7 +178,7 @@ for (currentWellField = 0; currentWellField < uniqueWellFields.length; currentWe
 	for (currentTimeLine = 0; currentTimeLine < uniqueTimeLines.length; currentTimeLine++) {
 		imageSequenceCounter = 0;
 		for (currentAcquisition = 0; currentAcquisition < uniqueAcquisitions.length; currentAcquisition++) {
-			if (useAcquisitionsBooleanLists[currentAcquisition] | ignoreAcquisitionsUseChannels) {  // always true if acquisitions are ignores => use all channels, otherwise only selected acquisitions will be processed
+			if (useAcquisitionsBooleanLists[currentAcquisition] ) {  // only selected acquisitions / channels will be processed
 				imageSequenceCounter++;  // only add one count if acquisition number is actually enabled and will be loaded 
 				print("( " + (currentWellField+1) + " / " + uniqueWellFields.length + " ) open images with regex:", currentWell, currentField, uniqueTimeLines[currentTimeLine], uniqueAcquisitions[currentAcquisition]);
 				regexString = "(.*_" + currentWell + "_.*" + currentField + ".*" + uniqueTimeLines[currentTimeLine] + ".*" + uniqueAcquisitions[currentAcquisition] + ".*)";
@@ -188,8 +189,11 @@ for (currentWellField = 0; currentWellField < uniqueWellFields.length; currentWe
 					currentImage = getTitle();
 					currentImage = currentImage + "_" + currentWell + "_" + currentField + "_" + uniqueTimeLines[currentTimeLine] + "_" + uniqueAcquisitions[currentAcquisition];
 					rename(currentImage);
-					mergeChannelsString = mergeChannelsString + "c" + channelToRGBArray[currentAcquisition] + "=[" + currentImage + "] ";
-					//print(mergeChannelsString);
+					if (acquisitonOption == availableAcquisitonOptions[2]) {   // "Merge as channels"	
+						//print(imageSequenceCounter);
+						mergeChannelsString = mergeChannelsString + "c" + channelToRGBArray[imageSequenceCounter - 1] + "=[" + currentImage + "] ";
+						//print(mergeChannelsString);
+						}
 					print("opened ", nSlices, " images:", currentImage);
 					} else {
 					print("no images found");	// run Image Sequence silently failed...
@@ -199,7 +203,7 @@ for (currentWellField = 0; currentWellField < uniqueWellFields.length; currentWe
 				if (make8bit) {
 					setMinAndMax(contrastValueArray[currentAcquisition * 2], contrastValueArray[currentAcquisition * 2 + 1]);
 					run("8-bit");
-				}
+					}
 
 				if (acquisitonOption == availableAcquisitonOptions[0]) {   // "Keep separate files"	
 					if (saveTif) {
@@ -210,7 +214,8 @@ for (currentWellField = 0; currentWellField < uniqueWellFields.length; currentWe
 						run("AVI... ", "compression=" + aviCompression + " frame=" + framesPerSec + " save=" + outputPath + currentImage + ".avi");
 						print("saved", outputPath + currentImage + ".avi");
 						}
-					close();	
+					close();
+					imageSequenceCounter--; // image is processed and closed, therefore open image is again zero	
 					}
 				} //end if use acquisition / channel
 			}  //end for acquistitions
@@ -245,7 +250,8 @@ for (currentWellField = 0; currentWellField < uniqueWellFields.length; currentWe
 	saveLog(outputPath + "Log_temp_" + tempLogFileNumber +".txt");		
 	}  //end well fields
 
-//print current time to Log window and save log
+
+//print current time to Log window and save log
 getDateAndTime(year, month, dayOfWeek, dayOfMonth, hour, minute, second, msec); month++;
 print("Macro executed successfully.\nEnd:",year+"-"+month+"-"+dayOfMonth+", "+hour+"-"+minute+"-"+second);
 selectWindow("Log");
