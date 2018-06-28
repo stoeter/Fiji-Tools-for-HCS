@@ -1,14 +1,14 @@
 //Line-Scan-3D-Cells
-macroName = "Line-Scan-3D-Cells";
+macroName = "Line_Scan_3D_Cells";
 macroShortDescription = "With this Macro you can speed up your line scans in 3D-stacks.";
 macroDescription = "This macro writes links (URLs) to the log window." +
 	"<br>- Select input folder" +
 	"<br>- Select ouput folder for saving files (plot profile, cytoplasmic background and analyzed cells, ROIs)" + 
 	"<br>- Follow the instructions" + 
 	"<br>- HINT: user + and - keys to zoom in and out, use < and > keys to move stack slices forth and back.";
-macroRelease = "first release 07-01-2017 by Sriyash Mangal (mangal(at)biologie.uni-muenchen.de) & Martin Stöter (stoeter(at)mpi-cbg.de)";
+macroRelease = "second release 28-06-2018 by Sriyash Mangal (mangal(at)biologie.uni-muenchen.de) & Martin Stöter (stoeter(at)mpi-cbg.de)";
 generalHelpURL = "https://github.com/stoeter/Fiji-Tools-for-HCS/wiki";
-macroHelpURL = generalHelpURL + "/" + macroName;
+macroHelpURL = generalHelpURL + "/Macro_" + macroName;
 macroHtml = "<html>" 
 	+"<font color=red>" + macroName + "\n" + macroRelease + "</font> <br> <br>"
 	+"<font color=black>" + macroDescription + "</font> <br> <br>"
@@ -22,7 +22,7 @@ macroHtml = "<html>"
 //print macro name and current time to Log window
 getDateAndTime(year, month, dayOfWeek, dayOfMonth, hour, minute, second, msec); month++;
 print("\\Clear");
-print(macroName,"\nStart:",year+"-"+month+"-"+dayOfMonth+", "+hour+"-"+minute+"-"+second);
+print(macroName, "(" + macroRelease + ")", "\nStart:",year+"-"+month+"-"+dayOfMonth+", "+hour+"-"+minute+"-"+second);
 print(macroHelpURL);
 print(generalHelpURL);
 
@@ -46,6 +46,8 @@ while (File.exists(outputPath + "Log_temp_" + tempLogFileNumber +".txt")) tempLo
 run("Set Measurements...", "area mean standard min integrated median stack display redirect=None decimal=3");
 run("Input/Output...", "jpeg=90 gif=-1 file=.txt copy_column copy_row save_column save_row");	
 run("Close All");
+run("Fiji-Tools-for-HCS-plugin");   // initialize plugin Fiji-Tools-for-HCS-plugin
+Ext.getMacroExtensionVersion();
 
 ////////////////////////////////        M A C R O   C O D E         /////////////////////////////// 
 //set variables
@@ -80,15 +82,71 @@ fileList = getFileListSubfolder(inputPath, displayFileList);  //read all files i
 fileList = getFileType(fileList, fileExtension, displayFileList);
 fileList = getFilteredFileList(fileList, false, displayFileList);    //filter for strings
 
+// use getRegexMatchesFromArray funtion from Fiji-Tools-for-HCS-plugin to find unique values in stings
+//regexPattern = "(?<barcode>.*)_(?<well>[A-P][0-9]{2})_(?<timePoint>T[0-9]{4})(?<field>F[0-9]{3})(?<timeLine>L[0-9]{2})(?<action>A[0-9]{2})(?<plane>Z[0-9]{2})(?<channel>C[0-9]{2}).tif$";
+regexPattern = "(?<barcode>.*)_(?<wellField>[A-P][0-9]{2}_T[0-9]{4}F[0-9]{3})(?<timeLineAction>L[0-9]{2}A[0-9]{2})(?<plane>Z[0-9]{2})(?<channel>C[0-9]{2}).tif$";  //(?<path>.*)[\\/]
+regexResults = inputPath;   // hand over path and file list will be loaded on Java/plugin side
+regexResults = "";  //hand over nothing and plugin will process the fileList
+//fileList = newArray(1);  // define array variable if not present yet, otherwise comment out
+Ext.getRegexMatchesFromArray(fileList, regexPattern, regexResults);   // result string contains all sets of unique regex matches separated by a <tab>-sign (\\t) and all sets of regex groups separated by double-pipe (||)
+regexGroupArray = split(regexResults, "||");   // split groups into an array using the (||) 
+// by definition the first array contains the named groups of the regex
+groupArray = split(regexGroupArray[0], "\t");
+Array.print(groupArray);
+
+// split each group of regex matches into an array using the (\\t)	
+for (currentGroup = 1; currentGroup < regexGroupArray.length; currentGroup++) {
+	currentRegexArray = split(regexGroupArray[currentGroup], "\t");
+	print("regex group", groupArray[currentGroup - 1] + ":");
+	Array.print(currentRegexArray);
+	//if(displayFileList) Array.show("List of unique " + groupArray[currentGroup - 1], currentRegexArray);
+	}
+uniqueWellFields = split(regexGroupArray[2], "\t");
+uniqueChannels = split(regexGroupArray[5], "\t");
+uniquePlanes = split(regexGroupArray[4], "\t");
+
+if(displayFileList) {
+	Array.show("List of unique values found by regex...", uniqueWellFields, uniqueChannels, uniquePlane);
+	waitForUser("Take a look at the list windows...");  //give user time to analyse the lists  
+}
+
+
 //setBatchMode(true);
-for (currentFile = 0; currentFile < fileList.length; currentFile++) {
+changeRegex = true;
+for (currentWellField = 0; currentWellField < uniqueWellFields.length; currentWellField++) {
 	// open files one after the other...
+	//open(fileList[currentWellField]);
+	print("( " + (currentWellField+1) + " / " + uniqueWellFields.length + " ) open images with regex:", uniqueWellFields[currentWellField]);
+	regexString = "(.*_" + uniqueWellFields[currentWellField] + ".*" + uniqueChannels[0] + ".*)";
+	print("regex:" + regexString);
+	if(changeRegex) {
+		Dialog.create("Setting for regular expression");
+		Dialog.addMessage("Change regex if needed:");
+		Dialog.addString("RegEx:", regexString, 30)
+		Dialog.addCheckbox("Show this window again?", true);
+		Dialog.show(); 
+		userRegexString = Dialog.getString();
+		changeRegex = Dialog.getCheckbox();
+		if(regexString != userRegexString) {
+			print("user regex:" + userRegexString);
+			regexString = userRegexString;
+			}
+		}
 	IJ.redirectErrorMessages();
-	open(fileList[currentFile]);
+	run("Image Sequence...", "open=[" + inputPath + "] file=" + regexString + " sort");
+	//run("Image Sequence...", "open=" + inputPath + " file=(G02_T0001F001.*C02) sort");
 	currentImage = getTitle();
-	currentImageNoExt = substring(currentImage, 0, lengthOf(currentImage) - 4);
-	print("opened image", currentImage);
-	showProgress(currentFile / fileList.length);
+	if(endsWith(currentImage, ".tif")) {
+		currentImageNoExt = substring(currentImage, 0, lengthOf(currentImage) - 4);
+		} else {
+		if(nSlices > 1) {
+			currentImageNoExt = getInfo("slice.label");	
+			} else {
+			currentImageNoExt = currentImage;		
+			}
+		}
+	//print("opened image", currentImage);
+	showProgress(currentWellField / fileList.length);
 	if (doAutoContrast) run("Enhance Contrast", "saturated=0.35");
 	run("Select None");
 	numberOfProfile = 0;
@@ -146,7 +204,7 @@ for (currentFile = 0; currentFile < fileList.length; currentFile++) {
 				if (slice == choosenSlice) {
 					run("Add Selection...");
 					getLocationAndSize(imageLocationX, imageLocationY, imageWidth, imageHeight);  // find image window
-					selectWindow("Plot of " + currentImageNoExt);
+					selectWindow("Plot of " + currentImage);
 					setLocation(imageLocationX + imageWidth, imageLocationY + imageHeight / 2);   // set plot window next to image window
 					selectWindow(currentImage);
 					setBatchMode(true);
@@ -247,7 +305,7 @@ for (currentFile = 0; currentFile < fileList.length; currentFile++) {
 			if (isOpen(currentImageNoExt + "_analysedCell_" + getNumberToString(numberOfProfile, 0, 2) + ".tif")) close(currentImageNoExt + "_analysedCell_" + getNumberToString(numberOfProfile, 0, 2) + ".tif");
 			close("Analysed_Cell");
 			}  //if 
-		if (isOpen("Plot of " + currentImageNoExt)) close("Plot of " + currentImageNoExt);	
+		if (isOpen("Plot of " + currentImage)) close("Plot of " + currentImage);	
 		saveLog(outputPath + "Log_temp_" + tempLogFileNumber +".txt");
 		}	// while
 		close(currentImage);
