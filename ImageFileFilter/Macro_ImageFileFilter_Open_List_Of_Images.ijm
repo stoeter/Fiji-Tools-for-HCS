@@ -4,7 +4,7 @@ macroShortDescription = "This macro open all filtered files in a selected folder
 macroDescription = "This macro reads single .tif images." +
 	"<br>The chosen folder will be searched for images including subfolders" +
 	"<br>and the list of files to be processed can be filters for text or tags in the file path.";
-macroRelease = "second release 11-04-2016 by Martin Stöter (stoeter(at)mpi-cbg.de)";
+macroRelease = "third release 16-04-2019 by Martin Stöter (stoeter(at)mpi-cbg.de)";
 generalHelpURL = "https://github.com/stoeter/Fiji-Tools-for-HCS/wiki";
 macroHelpURL = generalHelpURL + "/" + macroName;
 macroHtml = "<html>" 
@@ -45,13 +45,13 @@ if(outputPath != "not available") while (File.exists(outputPath + "Log_temp_" + 
 //initialize => default settings
 run("Set Measurements...", "area mean standard min centroid center shape integrated median display redirect=None decimal=3");
 run("Input/Output...", "jpeg=95 gif=-1 file=.txt copy_column copy_row save_column save_row");	
-run("Close All");
+//run("Close All");
 run("Color Balance...");
 
 ////////////////////////////////        M A C R O   C O D E         /////////////////////////////// 
 //set array variables
 batchMode = false;
-fileExtension = ".tif";                                                  //pre-definition of extension
+var fileExtension = ".tif";                                                  //pre-definition of extension
 var filterStrings = newArray("","","");                                      //pre-definition of strings to filter
 var availableFilterTerms = newArray("no filtering", "include", "exclude");   //dont change this
 var filterTerms = newArray("no filtering", "no filtering", "no filtering");  //pre-definition of filter types 
@@ -68,14 +68,19 @@ waitForUser("Do you really want to open " + fileList.length + " files?" + "\n\n"
 setBatchMode(batchMode);
 //go through all file
 for (currentFile = 0; currentFile < fileList.length; currentFile++) {
-	if (endsWith(fileList[currentFile],".tif")) {   //check if it is right file and handle error on open()
+	showProgress(currentFile / fileList.length);
+	showStatus("processing" + fileList[currentFile]);
+	if (endsWith(fileList[currentFile], ".tif")) {   //check if it is right file and handle error on open()
 		IJ.redirectErrorMessages();
-		run("TIFF Virtual Stack...", "open=[" + fileList[currentFile] + "]");
-		if (currentFile == 0) fileName = getTitle();
-		showProgress(currentFile / fileList.length);
-	       showStatus("processing" + fileList[currentFile]);
-   	    if (nImages > 0) {			//if image is open    	
-			print("opened (" + (currentFile + 1) + "/" + fileList.length + "):", fileList[currentFile]);  //to log window
+		//run("TIFF Virtual Stack...", "open=[" + fileList[currentFile] + "]");
+		} else {
+		IJ.redirectErrorMessages();
+		open(fileList[currentFile]);
+		}	
+    if (nImages > 0) {			//if image is open  
+   		if (currentFile == 0) fileName = getTitle();
+		print("opened (" + (currentFile + 1) + "/" + fileList.length + "):", fileList[currentFile]);  //to log window
+
 //////////// START: add here some code to be run on each image   ///////////////////////
 
 //run("Enhance Contrast", "saturated=0.35");
@@ -83,13 +88,14 @@ for (currentFile = 0; currentFile < fileList.length; currentFile++) {
 //print("saved stack: " + fileName);
 
 //////////// END: add here some code to be run on each image   /////////////////////////      	
-       		} else { //if no images open
-			print("file (" + (currentFile + 1) + "/" + fileList.length + "): ", fileList[currentFile], " could not be opened."); 	//if open() error
-			}
-		} else { //if file has different extensionn
-		print("file (" + (currentFile + 1) + "/" + fileList.length + "): ", fileList[currentFile], " was skipped."); 	//if not .tif
-		}		
-	}
+
+   		} else { //if no images open
+		print("file (" + (currentFile + 1) + "/" + fileList.length + "): ", fileList[currentFile], " could not be opened."); 	//if open() error
+		}
+//	} else { //if file has different extensionn
+//	print("file (" + (currentFile + 1) + "/" + fileList.length + "): ", fileList[currentFile], " was skipped."); 	//if not .tif
+	}		
+}
 				
 //print current time to Log window and save log
 getDateAndTime(year, month, dayOfWeek, dayOfMonth, hour, minute, second, msec); month++;
@@ -107,12 +113,12 @@ if(outputPath != "not available") {
 //this function set interactively the global variables used by the function getFilteredFileList
 //this function needs global variables! (see below)
 /*
-var fileExtension = ".tif";                                                  //default definition of extension
-var filterStrings = newArray("","","");                                      //default definition of strings to filter
-var availableFilterTerms = newArray("no filtering", "include", "exclude");   //dont change this
-var filterTerms = newArray(filterStrings.length); for  (i = 0; i < filterStrings.length; i++) {filterTerms[i] = "no filtering";} //default definition of filter types (automatic)
+//var fileExtension = ".tif";                                                  //default definition of extension
+//var filterStrings = newArray("","","");                                      //default definition of strings to filter
+//var availableFilterTerms = newArray("no filtering", "include", "exclude");   //dont change this
+//var filterTerms = newArray(filterStrings.length); for  (i = 0; i < filterStrings.length; i++) {filterTerms[i] = "no filtering";} //default definition of filter types (automatic)
 //var filterTerms = newArray("no filtering", "no filtering", "no filtering");  //default definition of filter types (manual)
-var displayFileList = false;                                                 //shall array window be shown? 
+//var displayFileList = false;                                                 //shall array window be shown? 
 */
 function setDialogImageFileFilter() {
 Dialog.create("Image file filter...");  //enable use inveractivity
