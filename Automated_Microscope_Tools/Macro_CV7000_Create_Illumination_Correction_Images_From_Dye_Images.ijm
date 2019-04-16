@@ -158,8 +158,8 @@ for (currentChannel = 0; currentChannel < channelList.length; currentChannel++) 
 	// all files for one channel
 	for (currentFile = 0; currentFile < fileListChannel.length; currentFile++) {   
 		IJ.redirectErrorMessages();
-		//open(fileListChannel[currentFile]);
-		run("Bio-Formats", "open=[" + fileListChannel[currentFile] + "] autoscale color_mode=Default view=[Standard ImageJ] stack_order=XYCZT");
+		open(fileListChannel[currentFile]);
+		//run("Bio-Formats", "open=[" + fileListChannel[currentFile] + "] autoscale color_mode=Default view=[Standard ImageJ] stack_order=XYCZT");  # BioFormats 6.0.0 change import! Opening .tif doesnt work anymore => open .wpi file
 		currentImage = getTitle();
 		print("opened (" + (currentFile + 1) + "/" + fileListChannel.length + "):", fileListChannel[currentFile]);  //to log window
 		run("Measure");
