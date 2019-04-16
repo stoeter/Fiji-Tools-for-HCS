@@ -5,11 +5,12 @@ macroDescription = "This macro reads single CV7000 images of a well as .tif ." +
 	"<br>The chosen folder will be searched for images including subfolders." +
 	"<br>All images of a unique well, field and channel are opened and projected." +
 	"<br>All z-projection methods selectable.";
-macroRelease = "second release 23-03-2016 by Martin Stoeter (stoeter(at)mpi-cbg.de)";
+macroRelease = "fifth release 06-11-2018";
+macroAuthor = "by Martin Stöter (stoeter(at)mpi-cbg.de)";
 generalHelpURL = "https://github.com/stoeter/Fiji-Tools-for-HCS/wiki";
 macroHelpURL = generalHelpURL + "/" + macroName;
 macroHtml = "<html>" 
-	+"<font color=red>" + macroName + "\n" + macroRelease + "</font> <br> <br>"
+	+"<font color=red>" + macroName + "\n" + macroRelease + " " + macroAuthor + "</font> <br> <br>"
 	+"<font color=black>" + macroDescription + "</font> <br> <br>"
 	+"<font color=black>Check for more help on this web page:</font> <br>"
 	+"<font color=blue>" + macroHelpURL + "</font> <br>"
@@ -21,7 +22,7 @@ macroHtml = "<html>"
 //print macro name and current time to Log window
 getDateAndTime(year, month, dayOfWeek, dayOfMonth, hour, minute, second, msec); month++;
 print("\\Clear");
-print(macroName,"\nStart:",year + "-" + month + "-" + dayOfMonth + ", h" + hour + "-m" + minute + "-s" + second);
+print(macroName, "(" + macroRelease + ")", "\nStart:",year + "-" + month + "-" + dayOfMonth + ", h" + hour + "-m" + minute + "-s" + second);
 print(macroHelpURL);
 print(generalHelpURL);
 
@@ -50,8 +51,9 @@ run("Close All");
 ////////////////////////////////        M A C R O   C O D E         /////////////////////////////// 
 
 //set variables
-batchMode = false;
+batchMode = true;
 availableProjectionTerms = newArray("Max Intensity", "Sum Slices", "Average Intensity", "Min Intensity", "Standard Deviation", "Median");
+availableProjectionFileTags = newArray("00", "all", "max", "min", "avg", "put my own tag");
 defaultFilterStrings = newArray("DC_sCMOS #","SC_BP","");
 print("Files containing these strings will be automatically filtered out:");
 Array.print(defaultFilterStrings);
@@ -101,14 +103,23 @@ Dialog.create("Set projection type");
 Dialog.addChoice("Projection:", availableProjectionTerms);	//set number of images in one row
 Dialog.addNumber("Lowest plane:", 1);
 Dialog.addNumber("Highest plane:", stackSize);
+Dialog.addChoice("Projection file tag:", availableProjectionFileTags);
 Dialog.addCheckbox("Save Z-stack instead of projection?", saveStack);	//if checked no projection will be done and image will be saves as stack
 Dialog.addCheckbox("Set batch mode (hide images)?", batchMode);	//if checked no images will be displayed
 Dialog.show();
 projectionType = Dialog.getChoice();
 Zstart = Dialog.getNumber();
 Zstop = Dialog.getNumber();
+projectionFileTag = Dialog.getChoice();
 saveStack = Dialog.getCheckbox();
 batchMode = Dialog.getCheckbox();
+
+if (projectionFileTag == "put my own tag") { // user defined file tag
+	Dialog.create("Set projection tag");
+	Dialog.addString("Projection file tag:", availableProjectionFileTags[1]);
+	Dialog.show();
+	projectionFileTag = Dialog.getString();
+	}
 print("Selected projection type:", projectionType, "starting from plane", Zstart, "until plane",Zstop);
 
 print("===== starting processing.... =====");
@@ -140,7 +151,7 @@ print("well-field (" + (currentWellField + 1) + "/" + wellFieldList.length + ") 
 		if (nImages > 1) {
 			run("Images to Stack", "name=Stack title=[] use");
 			if (!saveStack) run("Z Project...", "start=" + Zstart + " stop=" + Zstop + " projection=[" + projectionType + "]");
-			outputFileName = substring(currentImage,0,lengthOf(currentImage)-9) + "all" + substring(currentImage,lengthOf(currentImage)-7,lengthOf(currentImage));
+			outputFileName = substring(currentImage,0,lengthOf(currentImage)-9) + projectionFileTag + substring(currentImage,lengthOf(currentImage)-7,lengthOf(currentImage));
 			saveAs("Tiff", outputPath + outputFileName);
 			close();  //Z projection
 			if (!saveStack) {
@@ -283,8 +294,8 @@ return returnedList;
 //function returnes the unique wells of an array of CV7000 files
 //example: myUniqueWells = getUniqueWellListCV7000(myList, true);
 function getUniqueWellListCV7000(inputArray, displayList) {
-if (lastIndexOf(inputArray[0],"_T00") > 0) { //check first well
-	currentWell = substring(inputArray[0],lastIndexOf(inputArray[0],"_T00")-3,lastIndexOf(inputArray[0],"_T00"));   //first well found
+if (lastIndexOf(inputArray[0],"_T0") > 0) { //check first well
+	currentWell = substring(inputArray[0],lastIndexOf(inputArray[0],"_T0")-3,lastIndexOf(inputArray[0],"_T0"));   //first well found
 	} else {
 	print("no well found in path:", inputArray[i]);	
 	exit("No well information found in file name. Please double-check the file filtering...");
@@ -293,9 +304,9 @@ returnedWellList = newArray(currentWell);     //this list stores all unique well
 for (i = 1; i < inputArray.length; i++) {
 	j = 0;									//counter for returned well list
 	valueUnique = true;						//as long as value was not found in array of unique values
-	if (lastIndexOf(inputArray[i],"_T00") > 0) {  // if CV7000 file names are recognized
+	if (lastIndexOf(inputArray[i],"_T0") > 0) {  // if CV7000 file names are recognized
 		while (valueUnique && (returnedWellList.length > j)) {   //as long as value was not found in array of unique values and end of array is not reached
-			currentWell = substring(inputArray[i],lastIndexOf(inputArray[i],"_T00")-3,lastIndexOf(inputArray[i],"_T00"));
+			currentWell = substring(inputArray[i],lastIndexOf(inputArray[i],"_T0")-3,lastIndexOf(inputArray[i],"_T0"));
 			if (returnedWellList[j] == currentWell) {
 				valueUnique = false;			//if value was found in array of unique values stop while loop
 				} else {
@@ -316,8 +327,8 @@ return returnedWellList;
 //function returnes the unique well files (all fields of all wells, e.g. G10_T0001F001) of an array of CV7000 files
 //example: myUniqueWellFileds = getUniqueWellFieldListCV7000(myList, true);
 function getUniqueWellFieldListCV7000(inputArray, displayList) {
-if (lastIndexOf(inputArray[0],"_T00") > 0) { //check first well field
-	currentWellField = substring(inputArray[0],lastIndexOf(inputArray[0],"_T00")-3,lastIndexOf(inputArray[0],"_T00")+10);   //first well field found
+if (lastIndexOf(inputArray[0],"_T0") > 0) { //check first well field
+	currentWellField = substring(inputArray[0],lastIndexOf(inputArray[0],"_T0")-3,lastIndexOf(inputArray[0],"_T0")+10);   //first well field found
 	} else {
 	print("no well found in path:", inputArray[i]);	
 	exit("No well field information found in file name. Please double-check the file filtering...");
@@ -327,9 +338,9 @@ returnedWellFieldList = newArray(currentWellField);     //this list stores all u
 for (i = 0; i < inputArray.length; i++) {
 	j = 0;									//counter for returned well field list
 	valueUnique = true;						//as long as value was not found in array of unique values
-	if (lastIndexOf(inputArray[i],"_T00") > 0) {  // if CV7000 file names are recognized
+	if (lastIndexOf(inputArray[i],"_T0") > 0) {  // if CV7000 file names are recognized
 		while (valueUnique && (returnedWellFieldList.length > j)) {   //as long as value was not found in array of unique values and end of array is not reached
-			currentWellField = substring(inputArray[i],lastIndexOf(inputArray[i],"_T00")-3,lastIndexOf(inputArray[i],"_T00")+10);
+			currentWellField = substring(inputArray[i],lastIndexOf(inputArray[i],"_T0")-3,lastIndexOf(inputArray[i],"_T0")+10);
 			//print(i,j,currentWellField, returnedWellFieldList[j]);
 			if(returnedWellFieldList[j] == currentWellField) {
 				valueUnique = false;			//if value was found in array of unique values stop while loop
@@ -352,13 +363,13 @@ return returnedWellFieldList;
 //function returnes the unique fields (all fields of all wells, e.g. F001, F002,...) of an array of CV7000 files
 //example: myUniqueFields = getUniqueFieldListCV7000(myList, true);
 function getUniqueFieldListCV7000(inputArray, displayList) {
-currentField = substring(inputArray[0],lastIndexOf(inputArray[0],"_T00")+6,lastIndexOf(inputArray[0],"_T00")+10);   //first field found
+currentField = substring(inputArray[0],lastIndexOf(inputArray[0],"_T0")+6,lastIndexOf(inputArray[0],"_T0")+10);   //first field found
 returnedFieldList = newArray(currentField);     //this list stores all unique fields found and is returned at the end of the function
 for (i = 0; i < inputArray.length; i++) {
 	j = 0;									//counter for returned field list
 	valueUnique = true;						//as long as value was not found in array of unique values
 	while (valueUnique && (returnedFieldList.length > j)) {   //as long as value was not found in array of unique values and end of array is not reached
-		currentField = substring(inputArray[i], lastIndexOf(inputArray[i],"_T00")+6, lastIndexOf(inputArray[i],"_T00")+10);
+		currentField = substring(inputArray[i], lastIndexOf(inputArray[i],"_T0")+6, lastIndexOf(inputArray[i],"_T0")+10);
 		if(returnedFieldList[j] == currentField) {
 			valueUnique = false;			//if value was found in array of unique values stop while loop
 			} else {
