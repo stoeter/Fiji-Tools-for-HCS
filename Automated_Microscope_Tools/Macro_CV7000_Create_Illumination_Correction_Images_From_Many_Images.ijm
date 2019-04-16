@@ -41,7 +41,7 @@ if(outputPath != "not available") while (File.exists(outputPath + "Log_temp_" + 
 
 //initialize => default settings
 run("Set Measurements...", "area mean standard min integrated median display redirect=None decimal=3");
-run("Input/Output...", "jpeg=95 gif=-1 file=.txt copy_column copy_row save_column save_row");	
+run("Input/Output...", "jpeg=95 gif=-1 file=.txt save copy_column copy_row save_column save_row");  // set byte order to little-Endian / Intel -> 'save'
 run("Close All");
 
 ////////////////////////////////        M A C R O   C O D E         /////////////////////////////// 
@@ -186,6 +186,9 @@ for (channel = 0; channel < numberOfChannels; channel++) {
 	saveLog(outputPath + "Log_temp_" + tempLogFileNumber + ".txt");
 	close(stackImage);
 	}
+
+// set byte order again to standard
+run("Input/Output...", "jpeg=95 gif=-1 file=.txt copy_column copy_row save_column save_row");		
 	
 //print current time to Log window and save log
 getDateAndTime(year, month, dayOfWeek, dayOfMonth, hour, minute, second, msec); month++;
