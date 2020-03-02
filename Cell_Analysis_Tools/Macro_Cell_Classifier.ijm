@@ -93,7 +93,7 @@ if (groupingImages == groupingImagesArray[2]) {
 	}
 if (groupingImages == groupingImagesArray[3]) {
 	groupList = Array.getSequence(numberOfBatches);
-	filesPerBatch = floor(fileList.length / numberOfBatches) + 1;
+	filesPerBatch = floor(fileList.length / numberOfBatches);
 	print("Running " + numberOfBatches + " batches with " + filesPerBatch + " files per batch.");
 	}
 
