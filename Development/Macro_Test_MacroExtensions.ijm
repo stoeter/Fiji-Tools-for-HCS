@@ -65,6 +65,35 @@ myRegexGroupArray = split(myRegexResults, "||");
 myRegexPluginNameArray = split(myRegexGroupArray[1], "\t");
 //Array.show(myRegexPluginNameArray);
 
+print("\nOPTION: use resultstring (=3 parameter) as existing path, apply regex and open all images... see also HCS-Tools macro 'Import_Image_Sequence_Recursive' ");
+// getRegexMatchesFromArray for regex on file lists 
+// 1) define your path and pass it onto the result variable (if result variable is an existing path, then all file names will be read and the regular expression is applied on them...)
+optionalPath = getDirectory("plugins");
+//optionalPath = getDirectory("macros");  // enable this to mimic that no files were found
+myRegexResults = optionalPath;
+// 2) define your regex
+regexPattern = "(?<paths>.*Olympus.*00[0-9].png$)";
+// 3) define you regex query => here empty because the regex will be applied on the files found in given path
+stringArrayForQuery = newArray(0);
+// 4) launch the regex query
+Ext.getRegexMatchesFromArray(stringArrayForQuery, regexPattern, myRegexResults);
+// 5) since result is passed back as single string, regex groups can be split into an array using the (||) ...");
+myRegexGroupArray = split(myRegexResults, "||");
+print(myRegexResults);
+if(myRegexGroupArray.length < 2) {
+	print("no images found");
+	waitForUser("No images found!");
+	} else {
+// 6) save the list of paths in a FIJI temp folder (tab separated elements need to be separated by line breaks)
+	tempFile = getDirectory("temp") + "listOfPaths.txt";
+	print("saved list of paths temporarily here:", tempFile);
+	File.saveString(replace(myRegexGroupArray[1], "\t", "\n"), tempFile);
+// 7) first group is regex query names (here just "paths"), second group (=[1]) is array of paths
+	pathArray = split(myRegexGroupArray[1], "\t");
+	Array.show(pathArray);
+	run("Stack From List...", "open=" + tempFile);
+	}
+
 print("\n=== getFileListSubfolder ===");
 myFileListFromSubfolders = "display";
 Ext.getFileListSubfolder(optionalPath, myFileListFromSubfolders);  // optional path is directory of plugins and strings "display", "1" or true (boolean) enable showing array in a window
