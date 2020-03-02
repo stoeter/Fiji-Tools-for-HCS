@@ -72,7 +72,7 @@ for (currentFile = 0; currentFile < fileList.length; currentFile++) {
 	showStatus("processing" + fileList[currentFile]);
 	if (endsWith(fileList[currentFile], ".tif")) {   //check if it is right file and handle error on open()
 		IJ.redirectErrorMessages();
-		//run("TIFF Virtual Stack...", "open=[" + fileList[currentFile] + "]");
+		run("TIFF Virtual Stack...", "open=[" + fileList[currentFile] + "]");
 		} else {
 		IJ.redirectErrorMessages();
 		open(fileList[currentFile]);
@@ -95,7 +95,7 @@ for (currentFile = 0; currentFile < fileList.length; currentFile++) {
 //	} else { //if file has different extensionn
 //	print("file (" + (currentFile + 1) + "/" + fileList.length + "): ", fileList[currentFile], " was skipped."); 	//if not .tif
 	}		
-}
+
 				
 //print current time to Log window and save log
 getDateAndTime(year, month, dayOfWeek, dayOfMonth, hour, minute, second, msec); month++;
