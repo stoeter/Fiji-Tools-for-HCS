@@ -122,6 +122,7 @@ Dialog.addChoice("Save as .avi (compression)?", availableAVIOptions, availableAV
 Dialog.addNumber("Frames per seconds?", framesPerSec);
 Dialog.addMessage("Select the acquisition numbers to use:");
 for (currentAction = 0; currentAction < uniqueActions.length; currentAction++) Dialog.addCheckbox("Use acquisition " + uniqueActions[currentAction], true);
+Dialog.addMessage("");
 Dialog.addCheckbox("Save as channels separately?", saveChannelsSeparately);
 Dialog.addChoice("How to treat multiple actions/channels?", availableAcquisitonOptions);
 Dialog.addChoice("How to treat multiple time lines?", availableTimeLineOptions);
