@@ -37,13 +37,16 @@ Dialog.addHelp(macroHtml);
 Dialog.show;
 
 //choose folders
-inputPath = getDirectory("Choose image folder... ");
-outputPath = getDirectory("temp");
+//inputPath = getDirectory("Choose image folder... ");
+inputPath = "H:\\Tumoroids\\200709_002_TumoroidsCA9_seeding\\images\\";
+//outputPath = getDirectory("temp");
+outputPath = inputPath;
 
 printPaths = "inputPath = \"" + inputPath + "\";\noutputPath = \"" + outputPath + "\";";
 print(printPaths);
 
-logFilePath = outputPath + "Log_Import_Image_Sequence_Recursive.txt";
+timeTag = "" + year + "-" + month + "-" + dayOfMonth + "_" + hour + "-" + minute + "-" + second;
+logFilePath = outputPath + "Log_Import_Image_Sequence_Recursive_" + timeTag + ".txt";
 
 //initialize => default settings
 //run("Close All");
@@ -53,12 +56,13 @@ print("current memory:", parseInt(IJ.currentMemory())/(1024*1024*1024), "GB");
 //define your regex
 //regexString = "(?<path>.*Olympus.*00[0-9].png$)";
 regexString = "(?<path>.*C0[0-9].tif$)";
+//regexString = "(?<path>.*_[JK][1-9][0-9]_.*C0[2].tif$)"; 
 
 Dialog.create("Import Image Sequence Recursive");
-Dialog.addString("Regular expresion", regexString);
-Dialog.addCheckbox("Open as virtual stack?", false);
+Dialog.addString("Regular expresion", regexString, 35);
+Dialog.addCheckbox("Open as virtual stack?", true);
 Dialog.addCheckbox("Display file list?", false);
-Dialog.addCheckbox("Retain file with path list?", false);
+Dialog.addCheckbox("Retain file with path list?", true);
 Dialog.show(); 
 regexString = Dialog.getString();
 useVirtualStack = Dialog.getCheckbox();
@@ -89,10 +93,11 @@ if(regexGroupArray.length < 2) {
 	print("no images found");
 	waitForUser("No images found!");
 	} else {
-	tempFile = outputPath + "listOfPaths.txt";
-	print("saved list of paths temporarily here:", tempFile);
+	tempFile = outputPath + "listOfPaths_" + timeTag + ".txt";
+	print("saving list of paths here:", tempFile);	
 	File.saveString(replace(regexGroupArray[1], "\t", "\n"), tempFile);
-//first group is regex query names (here just "paths"), second group (=[1]) is array of paths)
+	if (File.exists(tempFile) == 0) print("could not save file (access rights?):", tempFile);
+	//first group is regex query names (here just "paths"), second group (=[1]) is array of paths)
 	pathArray = split(regexGroupArray[1], "\t");
 	if (displayFileList) Array.show(pathArray);
 	if (useVirtualStack) {
@@ -101,6 +106,8 @@ if(regexGroupArray.length < 2) {
 		useVirtualStack = "";	
 		}
 
+	//print(tempFile);
+	//print("open=" + tempFile + useVirtualStack);
 	run("Stack From List...", "open=" + tempFile + useVirtualStack);
 	rename("Image Sequence - " + regexString);
 	print("opened", nSlices , "images in a stack");
