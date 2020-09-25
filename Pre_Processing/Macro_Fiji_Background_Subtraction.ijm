@@ -5,8 +5,9 @@ macroDescription = "This macro opens the images as an image sequence." +
 	"<br>Images are specified by a giving a regular expression." + 
 	"<br>- Select input folder" +
 	"<br>- Specify ouput folder name for corrected images." + 
-	"<br>- Rolling ball radius can be set.";
-macroRelease = "second release 16-04-2019 by Martin Stöter (stoeter(at)mpi-cbg.de)";
+	"<br>- Rolling ball radius can be set." + 
+	"<br>- Gaussian blur can be applied before bkg subtraction; if radius equals 0, then no blurring.";
+macroRelease = "third release 20-07-2020 by Martin Stöter (stoeter(at)mpi-cbg.de)";
 generalHelpURL = "https://github.com/stoeter/Fiji-Tools-for-HCS/wiki";
 macroHelpURL = generalHelpURL + "/" + macroName;
 macroHtml = "<html>" 
@@ -38,6 +39,7 @@ inputPath = getDirectory("Choose image folder... ");
 //outputPath = getDirectory("Choose result image folder... or create a folder");
 newFolderName = "Fiji-BkgSub";
 outputPath = inputPath + newFolderName + File.separator;
+//outputPath = getDirectory("temp") + newFolderName + File.separator;
 
 printPaths = "inputPath = \"" + inputPath + "\";\noutputPath = \"" + outputPath + "\";";
 print(printPaths);
@@ -53,22 +55,25 @@ print("current memory:", parseInt(IJ.currentMemory())/(1024*1024*1024), "GB");
 ////////////////////////////////        M A C R O   C O D E         /////////////////////////////// 
 regexString = "(C0[4].tif)";
 rollingBallRadius = 5;
+gaussianRadius = 0;
 fileTag = "_IJ-bkgSub";
 renameFiles = true;
 
 Dialog.create("Settings for movie generation");
 Dialog.addString("Regular expresion", regexString);
 Dialog.addNumber("Size of rolling ball radius", rollingBallRadius);
+Dialog.addNumber("Size of Gaussian radius", gaussianRadius);
 Dialog.addString("File tag for result images", fileTag);
 Dialog.addCheckbox("Rename files?", renameFiles);
 Dialog.addCheckbox("Hide image display?", true);
 Dialog.show(); 
 regexString = Dialog.getString();
 rollingBallRadius = Dialog.getNumber();
+gaussianRadius = Dialog.getNumber();
 fileTag = Dialog.getString();
 renameFiles = Dialog.getCheckbox();
 hideImages = Dialog.getCheckbox();
-print("Regular expresion", regexString, "; size of rolling ball radius", rollingBallRadius, "; file tag for result images", fileTag, "; rename files?", renameFiles);
+print("Regular expresion", regexString, "; size of rolling ball radius", rollingBallRadius, "; size of Gaussian radius", gaussianRadius, "; file tag for result images", fileTag, "; rename files?", renameFiles);
 
 if(!File.isDirectory(outputPath)) {
 	File.makeDirectory(outputPath)
@@ -86,7 +91,11 @@ if(lengthOf(fileNameSubTitle) >= 60) {
 	print("File name that will be used for saving:", fileNameSubTitle);
 	print("Subtitle of stack cannot handle full file names! \nDue to limit of 60 characters in subtitle of Fiji stacks the file name might be chopped off at the end,\nand files could be wrong or overwritten! \nPlease press <ESC> to cancel or <OK> to go on.");
 	waitForUser("File name that will be used for saving:\n\n" + fileNameSubTitle + "\n\nSubtitle of of stack cannot handle full file names! \nDue to limit of 60 characters in subtitle of Fiji stacks the file name might be chopped off at the end,\nand files could be wrong or overwritten! \n\nPlease press <ESC> to cancel or <OK> to go on."); 
-}
+	}
+if (gaussianRadius > 0) {
+	print("applying Gaussian blur on ", nSlices, "images...");
+	run("Gaussian Blur...", "sigma=" + gaussianRadius + " stack");
+	}
 print("subtracting background from ", nSlices, "images...");
 run("Subtract Background...", "rolling=" + rollingBallRadius + " stack");
 print("saving images...");
