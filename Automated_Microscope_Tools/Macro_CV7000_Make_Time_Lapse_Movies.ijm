@@ -41,6 +41,8 @@ outputPath = getDirectory("Choose result image folder... or create a folder");
 
 //inputPath = "T:\\projects\\Other_small_projects\\HT-uncaging_Nadler\\cv7000images\\007EX170512A-MDCKgekoCa_20170512_161943\\007EX170512A-MDCKgekoCa\\";
 //outputPath = "C:\\Users\\stoeter\\Desktop\\TempStore\\testDelete\\";
+//inputPath = "C:\\Users\\stoeter\\Desktop\\movies\\200625-AH35-Uptk-Movie-GFP-siGlo-AH35_20200626_120658 C04\\200625-AH35-Uptk-Movie-GFP-siGlo-AH35\\";
+//outputPath = "C:\\Users\\stoeter\\Desktop\\movies\\200625-AH35-Uptk-Movie-GFP-siGlo-AH35_20200626_120658 C04\\";
 
 printPaths = "inputPath = \"" + inputPath + "\";\noutputPath = \"" + outputPath + "\";";
 print(printPaths);
@@ -55,33 +57,11 @@ run("Fiji-Tools-for-HCS-plugin");   // initialize plugin Fiji-Tools-for-HCS-plug
 Ext.getMacroExtensionVersion();
 
 ////////////////////////////////        M A C R O   C O D E         /////////////////////////////// 
-//set variables
-var fileExtension = ".tif";                                                  //pre-definition of extension
-var filterStrings = newArray("_T0001","_C","");                                      //pre-definition of strings to filter
-var availableFilterTerms = newArray("no filtering", "include", "exclude");   //dont change this
-var filterTerms = newArray("include", "include", "no filtering");  //pre-definition of filter types 
-var displayFileList = true;                                                 //shall array window be shown? 
-print("This Image File Filter will find the first time point (T0001) for each imges series and will extract meta data from those file names...");
-setDialogImageFileFilter();
-print("Image file filter:", filterTerms[0],filterStrings[0] + ";",filterTerms[1],filterStrings[1] + ";",filterTerms[2],filterStrings[2]);
-
-//get file list ALL
-//fileList = getFileList(inputPath);
-//fileList = getFileListSubfolder(inputPath, displayFileList);  //read all files in subfolders
-//fileList = getFileType(fileList, fileExtension, displayFileList);
-//fileList = getFilteredFileList(fileList, false, displayFileList);    //filter for strings
-
-//replaced by plugin: 
-/*uniqueWellFields = getUniqueWellFieldListCV7000(fileList, displayFileList);
-uniqueAcquisitions = getUniqueAcquisitionListCV7000(fileList, displayFileList);
-uniqueChannels = getUniqueChannelListCV7000(fileList, displayFileList);
-uniqueTimeLines = getUniqueTimeLineListCV7000(fileList, displayFileList);
-uniqueTimeLineAcquisitions = getUniqueTimeLineAcquisitionListCV7000(fileList, displayFileList);
-*/
+displayFileList = true;                                                 //shall array window be shown? 
 
 // use getRegexMatchesFromArray funtion from Fiji-Tools-for-HCS-plugin to find unique values in stings
 //regexPattern = "(?<barcode>.*)_(?<well>[A-P][0-9]{2})_(?<timePoint>T[0-9]{4})(?<field>F[0-9]{3})(?<timeLine>L[0-9]{2})(?<action>A[0-9]{2})(?<plane>Z[0-9]{2})(?<channel>C[0-9]{2}).tif$";
-regexPattern = "(?<barcode>.*)_(?<wellField>[A-P][0-9]{2}_T[0-9]{4}F[0-9]{3})(?<timeLineAction>L[0-9]{2}A[0-9]{2})(?<plane>Z[0-9]{2})(?<channel>C[0-9]{2}).tif$";
+regexPattern = "(?<barcode>.*)_(?<wellField>[A-P][0-9]{2}_T0001F[0-9]{3})(?<timeLineAction>L[0-9]{2}A[0-9]{2})(?<plane>Z[0-9]{2})(?<channel>C[0-9]{2}).tif$";
 regexResults = inputPath;   // hand over path and file list will be loaded on Java/plugin side
 //regexResults = "";  //hand over nothing and plugin will process the fileList
 fileList = newArray(1);  // define array variable if not present yet, otherwise comment out
@@ -126,42 +106,47 @@ useActionsBooleanLists = newArray(uniqueActions.length);
 useChannelsBooleanLists = newArray(uniqueChannels.length);
 
 // settings for move generation
-availableAVIcompressions = newArray("None", "JPEG", "PNG");
+availableTifOptions = newArray("No .tif", "16-bit");
+availableAVIOptions = newArray("No .avi", "None", "JPEG", "PNG");
 framesPerSec = 5;
-availableAcquisitonOptions = newArray("Keep separate files", "Concatenate as series", "Merge as channels");
+saveChannelsSeparately = true;
+availableAcquisitonOptions = newArray("Keep separately", "Concatenate as series", "Merge as channels");
 availableTimeLineOptions = newArray("Ignore time lines", "Process time lines separately");
 ignoreActionsUseChannels = false;
+doBleachCorrection = false;
 make8bit = false;
 
 Dialog.create("Settings for movie generation");
-Dialog.addCheckbox("Save as .tif?", true);
-Dialog.addCheckbox("Save as .avi?", false);
-Dialog.addChoice("Compression for .avi:", availableAVIcompressions);
+Dialog.addChoice("Save as .tif?", availableTifOptions, availableTifOptions[1]);
+Dialog.addChoice("Save as .avi (compression)?", availableAVIOptions, availableAVIOptions[0]);
 Dialog.addNumber("Frames per seconds?", framesPerSec);
 Dialog.addMessage("Select the acquisition numbers to use:");
 for (currentAction = 0; currentAction < uniqueActions.length; currentAction++) Dialog.addCheckbox("Use acquisition " + uniqueActions[currentAction], true);
-Dialog.addChoice("How to treat multiple acquisitions?", availableAcquisitonOptions);
+Dialog.addCheckbox("Save as channels separately?", saveChannelsSeparately);
+Dialog.addChoice("How to treat multiple actions/channels?", availableAcquisitonOptions);
 Dialog.addChoice("How to treat multiple time lines?", availableTimeLineOptions);
 Dialog.addCheckbox("Use channels instead of acquisitions?", ignoreActionsUseChannels);
-Dialog.addCheckbox("Adjust contrast and make 8-bit?", make8bit);
+Dialog.addCheckbox("Make bleach correction?", doBleachCorrection);
+//Dialog.addCheckbox("Adjust contrast and make 8-bit?", make8bit);
 Dialog.addCheckbox("Hide image display?", true);
 Dialog.show(); 
-saveTif = Dialog.getCheckbox();
-saveAvi = Dialog.getCheckbox();
-aviCompression = Dialog.getChoice();
+saveTif = Dialog.getChoice();
+saveAvi = Dialog.getChoice();
 framesPerSec = Dialog.getNumber();
 for (currentAction = 0; currentAction < uniqueActions.length; currentAction++) {
 	useActionsBooleanLists[currentAction] = Dialog.getCheckbox();
 	print("Action -", uniqueActions[currentAction], ":", useActionsBooleanLists[currentAction]);
 	}
+saveChannelsSeparately = Dialog.getCheckbox();	
 acquisitonOption = Dialog.getChoice();
 timeLineOption = Dialog.getChoice();
 ignoreActionsUseChannels = Dialog.getCheckbox();
-make8bit = Dialog.getCheckbox();
+doBleachCorrection = Dialog.getCheckbox();
+//make8bit = Dialog.getCheckbox();
 hideImages = Dialog.getCheckbox();
-print("save movie as .tif -" + saveTif + "- and as .avi -" + saveAvi + "- with", aviCompression, "compression"); 
-print("Treat acquisitions:" + acquisitonOption + ", treat time lines:" + timeLineOption, ", ignore acquisition and use channel info:", ignoreActionsUseChannels); 
-print("save movie with", framesPerSec, "frames per second; hide images", hideImages); 
+print("save movie as .tif -" + saveTif + "- and as .avi -" + saveAvi + "- with", framesPerSec , "frames per second"); 
+print("Treat actions:" + acquisitonOption + ", treat time lines:" + timeLineOption, ", ignore acquisition and use channel info:", ignoreActionsUseChannels); 
+print("hide images", hideImages); 
 
 if (ignoreActionsUseChannels) {
 	Dialog.create("Settings for movie generation");
@@ -175,12 +160,35 @@ if (ignoreActionsUseChannels) {
 		}
 	}	
 
+if (doBleachCorrection) {
+	//run("Bleach Correction", "correction=[Simple Ratio] background=10");  run("Bleach Correction", "correction=[Exponential Fit]");  run("Bleach Correction", "correction=[Histogram Matching]");
+	availableBleachModels = newArray("Simple Ratio","Exponential Fit", "Histogram Matching");
+	bleachModelParameter = 0;
+	Dialog.create("Settings for bleach correction");
+	Dialog.addMessage("Select the bleach correction to apply:");
+	Dialog.addMessage("Simple Ratio: speed medium, needs background parameter\nExponential Fit: speed fast, no parameter needed\nHistogram Matching: very slow on 16bit, no parameter");
+	Dialog.addChoice("Bleach correction model:", availableBleachModels);
+	Dialog.addNumber("Background value (only Simple Ratio)?", bleachModelParameter);
+	Dialog.show(); 
+	bleachModel = Dialog.getChoice();
+	bleachModelParameter = Dialog.getNumber();
+	if (bleachModel == "Simple Ratio") {
+		bleachModelParameter = " background=" + bleachModelParameter;
+		} else {
+		bleachModelParameter = "";	
+		}
+	print("Bleaching applied, Model:" + bleachModel + bleachModelParameter); 	
+	}
+
 //set variables according to user dialogs
 contrastValueArray = newArray(100,355,100,355,100,355,100,355,100,355);  //vector of alternating min-max contrast values => newArray(ch1-min,ch1-max,ch2-min,ch2-max,ch3-min, ...)
 //fileEndArray = newArray("C01.tif","C02.tif","C03.tif","C04.tif");  //vector of a file endings of individual channels
 channelToRGBArray = newArray("3","2","1");   //vector of colors (RGB channel numbers) assigned to file endings
-if (make8bit) {
-	print("intensities of channels will be adjusted and images will be converted to 8-bit..."); 
+contrastValueArray = newArray(50,2000,50,1200,50,2000,100,355,100,355);  //vector of alternating min-max contrast values => newArray(ch1-min,ch1-max,ch2-min,ch2-max,ch3-min, ...)
+channelToRGBArray = newArray("2","1","3");   //vector of colors (RGB channel numbers) assigned to file endings
+//if (make8bit) {
+if (saveAvi != availableAVIOptions[0]) {  // if .avi is saved => 8-bit needed or tife saved as 8-bit
+	print("To save .avi intensities of channels will be adjusted ..."); 
 	print("for RGB merges colors have these channel numbers: Red = 1, Green = 2, Blue = 3");
 	fileTag = "_RGB";
 	Dialog.create("Set contrast values for RGB merge");
@@ -221,18 +229,19 @@ for (currentWellField = 0; currentWellField < uniqueWellFields.length; currentWe
 	if (ignoreActionsUseChannels) {
 		uniqueActions = uniqueChannels;  // assumption iterate over acquisition now will iterate over channels
 		useActionsBooleanLists = useChannelsBooleanLists;
-	}
+		}
 		
 	for (currentTimeLine = 0; currentTimeLine < uniqueTimeLines.length; currentTimeLine++) {
 		imageSequenceCounter = 0;
 		for (currentAction = 0; currentAction < uniqueActions.length; currentAction++) {
-			if (useActionsBooleanLists[currentAction] | ignoreActionsUseChannels) {  // always true if acquisitions are ignores => use all channels, otherwise only selected acquisitions will be processed
+			if (useActionsBooleanLists[currentAction]) {  // always true if acquisitions are ignores => use all channels, otherwise only selected acquisitions will be processed, deleted: | ignoreActionsUseChannels
 				imageSequenceCounter++;  // only add one count if acquisition number is actually enabled and will be loaded 
 				print("( " + (currentWellField+1) + " / " + uniqueWellFields.length + " ) open images with regex:", currentWell, currentField, uniqueTimeLines[currentTimeLine], uniqueActions[currentAction]);
 				regexString = "(.*_" + currentWell + "_.*" + currentField + ".*" + uniqueTimeLines[currentTimeLine] + ".*" + uniqueActions[currentAction] + ".*)";
 				print("regex:" + "(.*_" + currentWell + "_.*" + currentField + ".*" + uniqueTimeLines[currentTimeLine] + ".*" + uniqueActions[currentAction] + ".*)");
 				IJ.redirectErrorMessages();
-				run("Image Sequence...", "open=[" + inputPath + "] file=" + regexString + " sort");
+				run("Image Sequence...", "dir=[" + inputPath + "] filter=" + regexString + " sort");
+				//waitForUser("check: " + nImages + "_" + imageSequenceCounter);
 				if (nImages == imageSequenceCounter) { // see imageSequenceCounter above
 					currentImage = getTitle();
 					currentImage = currentImage + "_" + currentWell + "_" + currentField + "_" + uniqueTimeLines[currentTimeLine] + "_" + uniqueActions[currentAction];
@@ -244,22 +253,36 @@ for (currentWellField = 0; currentWellField < uniqueWellFields.length; currentWe
 					print("no images found");	// run Image Sequence silently failed...
 					}
 
+				//apply bleach correction
+				if (doBleachCorrection) {
+					//run("Bleach Correction", "correction=[Simple Ratio] background=10");  run("Bleach Correction", "correction=[Exponential Fit]");  run("Bleach Correction", "correction=[Histogram Matching]");
+					run("Bleach Correction", "correction=[" + bleachModel + "]" + bleachModelParameter);
+					close(currentImage);
+					if (bleachModel == "Exponential Fit") close("y = a*"); // close plot window from exponential fit 
+					}
+
 				//set contrast
-				if (make8bit) {
+				if (saveAvi != availableAVIOptions[0]) {
 					setMinAndMax(contrastValueArray[currentAction * 2], contrastValueArray[currentAction * 2 + 1]);
-					run("8-bit");
+					//run("8-bit");
 				}
 
-				if (acquisitonOption == availableAcquisitonOptions[0]) {   // "Keep separate files"	
-					if (saveTif) {
+				if (saveChannelsSeparately) {   // "save separete channels/acquisitions separate files"	
+					if (saveTif == availableTifOptions[1]) {
 						saveAs("Tiff", outputPath + currentImage + ".tif");
 						print("saved", outputPath + currentImage + ".tif");
 						}
-					if (saveAvi) {
-						run("AVI... ", "compression=" + aviCompression + " frame=" + framesPerSec + " save=" + outputPath + currentImage + ".avi");
+					if (saveAvi != availableAVIOptions[0]) {
+						run("AVI... ", "compression=" + saveAvi + " frame=" + framesPerSec + " save=[" + outputPath + currentImage + ".avi]");
 						print("saved", outputPath + currentImage + ".avi");
 						}
-					close();	
+					}
+				
+				if (acquisitonOption == availableAcquisitonOptions[0]) {   // "Keep separate files"	...and not further use of individual images is needed (no merging, no concatinating)
+					close();
+					imageSequenceCounter--;  // subtract one count if no mergering is done and just the separared channels will be saved (otherwise the open images and the imageSequenceCounter does not fit)	
+					} else {
+					rename(currentImage);	
 					}
 				} //end if use acquisition / channel
 			}  //end for acquistitions
@@ -280,12 +303,12 @@ for (currentWellField = 0; currentWellField < uniqueWellFields.length; currentWe
 	
 		//Save the image file
 		if (nImages > 0) { //check if regex was sucessful and images could be opened
-			if (saveTif) {
+			if (saveTif == availableTifOptions[1]) {
 				saveAs("Tiff", outputPath + currentImage + ".tif");
 				print("saved", outputPath + currentImage + ".tif");
 				}
-			if (saveAvi) {
-				run("AVI... ", "compression=" + aviCompression + " frame=" + framesPerSec + " save=" + outputPath + currentImage + ".avi");
+			if (saveAvi != availableAVIOptions[0]) {
+				run("AVI... ", "compression=" + saveAvi + " frame=" + framesPerSec + " save=[" + outputPath + currentImage + ".avi] ");
 				print("saved", outputPath + currentImage + ".avi");
 				}
 			close();
@@ -306,60 +329,4 @@ if (File.exists(outputPath + "Log_temp_" + tempLogFileNumber +".txt")) File.dele
 ////////                             F U N C T I O N S                          /////////////
 /////////////////////////////////////////////////////////////////////////////////////////////
 
-//function filters a file list for a certain strings
-//example: myFileList = getFilteredFileList(myFileList, false, true);
-//if filterOnInputList = true, then additional filtering is possible (e.g. file names containing "H08" and "D04" => H08 and D04 in list)
-//if filterOnInputList = false, then subsequent filtering is possible (e.g. file names containing "controls" and "positive" => positive controls, but not negative controls in list!)
-//this function needs global variables (see function setDialogImageFileFilter)
-//var filterStrings = newArray("","","");                                      //pre-definition of strings to filter
-//var availableFilterTerms = newArray("no filtering", "include", "exclude");   //dont change this
-//var filterTerms = newArray("no filtering", "no filtering", "no filtering");
-function getFilteredFileList(fileListFunction, filterOnInputList, displayList) {
-skippedFilter = 0;	
-for (i = 0; i < filterStrings.length; i++) {
-	if (filterTerms[i] != availableFilterTerms[0]) {
-		returnedFileList = newArray(0);     //this list stores all files found to have the extension and is returned at the end of the function
-		for (j = 0; j < fileListFunction.length; j++) {
-			if (filterTerms[i] == "include" && indexOf(fileListFunction[j],filterStrings[i]) != -1) returnedFileList = Array.concat(returnedFileList,fileListFunction[j]);
-			if (filterTerms[i] == "exclude" && indexOf(fileListFunction[j],filterStrings[i]) <= 0) returnedFileList = Array.concat(returnedFileList,fileListFunction[j]);
-			}
-		print(returnedFileList.length + " files found after filter: " + filterTerms[i] + " text " + filterStrings[i] + "."); 
-		if (displayList) {Array.show("List of files - after filtering for " + filterStrings[i], returnedFileList);}
-		//see description above! default: filterOnInputList = false
-		if(!filterOnInputList) fileListFunction = returnedFileList; 
-		} else skippedFilter++;
-	} 
-if (skippedFilter == filterStrings.length) returnedFileList = fileListFunction;	//if no filter condition is selected
-return returnedFileList;
-}
-
-//function opens a dialog to set text list for filtering a list
-//example: setDialogImageFileFilter();
-//this function set interactively the global variables used by the function getFilteredFileList
-//this function needs global variables! (see below)
-/*
-var fileExtension = ".tif";                                                  //default definition of extension
-var filterStrings = newArray("","","");                                      //default definition of strings to filter
-var availableFilterTerms = newArray("no filtering", "include", "exclude");   //dont change this
-var filterTerms = newArray(filterStrings.length); for  (i = 0; i < filterStrings.length; i++) {filterTerms[i] = "no filtering";} //default definition of filter types (automatic)
-//var filterTerms = newArray("no filtering", "no filtering", "no filtering");  //default definition of filter types (manual)
-var displayFileList = false;                                                 //shall array window be shown? 
-*/
-function setDialogImageFileFilter() {
-Dialog.create("Image file filter...");  //enable use inveractivity
-Dialog.addMessage("Define the files to be processed:");
-Dialog.addString("Files should have this extension:", fileExtension);	//add extension
-Dialog.addMessage("Define filter for files:");
-for (i = 0; i < filterStrings.length; i++) {
-	Dialog.addString((i + 1) + ") Filter this text from file list: ", filterStrings[i]);	
-	Dialog.addChoice((i + 1) + ") Files with text are included/excluded?", availableFilterTerms, filterTerms[i]);	
-	}
-Dialog.addCheckbox("Display the file lists?", displayFileList);	//if check file lists will be displayed
-Dialog.show();
-fileExtension = Dialog.getString();
-for (i = 0; i < filterStrings.length; i++) {
-	filterStrings[i] = Dialog.getString();	
-	filterTerms[i] = Dialog.getChoice();	
-	}
-displayFileList = Dialog.getCheckbox();
-}
+//replaced by plugin: 
