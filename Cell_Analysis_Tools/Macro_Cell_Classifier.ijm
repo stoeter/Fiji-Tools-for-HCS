@@ -7,7 +7,7 @@ macroDescription = "This macro helps to classify cells or objects." +
 	"<br>- Select ouput folder for saving files (class model, classification results)" + 
 	"<br>- Follow the instructions" + 
 	"<br>- HINT: user + and - keys to zoom in and out, use < and > keys to move stack slices forth and back.";
-macroRelease = "first release 17-03-2017 by Martin Stöter (stoeter(at)mpi-cbg.de)";
+macroRelease = "second release 30-09-2020 by Martin Stöter (stoeter(at)mpi-cbg.de)";
 generalHelpURL = "https://github.com/stoeter/Fiji-Tools-for-HCS/wiki";
 macroHelpURL = generalHelpURL + "/" + macroName;
 macroHtml = "<html>" 
@@ -155,8 +155,9 @@ for (currentGroup = 0; currentGroup < groupList.length; currentGroup++) {
 	waitForUser("- do your classifications...\n- see details & instructions in the [Log] window Chapter 2 ...\n- when you are done press 'ok'");
 	currentImageStack = getTitle();
 	print(textWindow, "\\Update:"); // clears the window
-	print(textWindow, "\n" + currentImageStack + ".xml\n" + "- use this file name with copy/paste" + "\n" + "- press [Save markers] to save the classification points");
+	print(textWindow, "\n" + currentImageStack + ".xml\n" + "- use this file name with copy/paste (is already in clipboard)" + "\n" + "- press [Save markers] to save the classification points");
 	print(textWindow, "\n\n" + currentImageStack + ".txt\n" + "- use this file name with copy/paste" + "\n" + "- press [Measure] to save the classification results");
+	String.copy(currentImageStack + ".xml");
 	waitForUser("Follow instructions in window 'Interactive Instructions'\n- ...save markers\n- ...save measurements\n- see details & instructions in the [Log] window Chapter 3 ...");
 	saveLog(outputPath + "Log_temp_" + tempLogFileNumber +".txt");
 	close(currentImageStack);
