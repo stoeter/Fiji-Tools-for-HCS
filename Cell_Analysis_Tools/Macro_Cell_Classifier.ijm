@@ -5,9 +5,9 @@ macroDescription = "This macro helps to classify cells or objects." +
 	"<br>Images will be opened in groups as stack and user can count object in the defined classes." + 
 	"<br>- Select input folder" +
 	"<br>- Select ouput folder for saving files (class model, classification results)" + 
-	"<br>- Follow the instructions" + 
+	"<br>- Follow the instructions and read the Wiki page for help!" + 
 	"<br>- HINT: user + and - keys to zoom in and out, use < and > keys to move stack slices forth and back.";
-macroRelease = "second release 30-09-2020 by Martin Stöter (stoeter(at)mpi-cbg.de)";
+macroRelease = "third release 07-10-2020 by Martin Stöter (stoeter(at)mpi-cbg.de)";
 generalHelpURL = "https://github.com/stoeter/Fiji-Tools-for-HCS/wiki";
 macroHelpURL = generalHelpURL + "/" + macroName;
 macroHtml = "<html>" 
@@ -23,7 +23,7 @@ macroHtml = "<html>"
 //print macro name and current time to Log window
 getDateAndTime(year, month, dayOfWeek, dayOfMonth, hour, minute, second, msec); month++;
 print("\\Clear");
-print(macroName,"\nStart:",year+"-"+month+"-"+dayOfMonth+", "+hour+"-"+minute+"-"+second);
+print(macroName, "(" + macroRelease + ")", "\nStart:",year+"-"+month+"-"+dayOfMonth+", "+hour+"-"+minute+"-"+second);
 print(macroHelpURL);
 print(generalHelpURL);
 
@@ -68,12 +68,10 @@ Dialog.create("Setting for analysis");
 Dialog.addMessage("Define the grouping of images:");
 Dialog.addChoice("Load one group of", groupingImagesArray, groupingImagesArray[0]);
 Dialog.addCheckbox("Display unique values for group?", false);
-//Dialog.addNumber("How many batches (there are " + fileList.length + " files)?", 10);
-Dialog.addCheckbox("Make montage from batch of images?", false);
+Dialog.addCheckbox("Make montage from group of images?", false);
 Dialog.show(); 
 groupingImages = Dialog.getChoice();
 displayGroup = Dialog.getCheckbox();
-//numberOfBatches = Dialog.getNumber();
 makeMontage = Dialog.getCheckbox();
 
 if (groupingImages == groupingImagesArray[3]) {
@@ -111,7 +109,6 @@ if (groupingImages == groupingImagesArray[3] && batchDefinition == "images per b
 	groupList = Array.getSequence(numberOfBatches);
 	print("Batches:", batchDefinition, "Running " + numberOfBatches + " batches with " + filesPerBatch + " files per batch.");
 	}
-
 
 textWindowName = "Interactive Instructions";
 textWindow = "["+textWindowName+"]";
