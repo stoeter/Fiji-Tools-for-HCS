@@ -68,16 +68,26 @@ Dialog.create("Setting for analysis");
 Dialog.addMessage("Define the grouping of images:");
 Dialog.addChoice("Load one group of", groupingImagesArray, groupingImagesArray[0]);
 Dialog.addCheckbox("Display unique values for group?", false);
-Dialog.addNumber("How many batches (there are " + fileList.length + " files)?", 10);
-//Dialog.addCheckbox(" - as stack as .tif?", true);
-//Dialog.addMessage("");
-//Dialog.addCheckbox("Save ROI for reanalysis?", true);
+//Dialog.addNumber("How many batches (there are " + fileList.length + " files)?", 10);
+Dialog.addCheckbox("Make montage from batch of images?", false);
 Dialog.show(); 
 groupingImages = Dialog.getChoice();
 displayGroup = Dialog.getCheckbox();
-numberOfBatches = Dialog.getNumber();
-//saveTif = Dialog.getCheckbox();
-//saveROI = Dialog.getCheckbox();
+//numberOfBatches = Dialog.getNumber();
+makeMontage = Dialog.getCheckbox();
+
+if (groupingImages == groupingImagesArray[3]) {
+	Dialog.create("Setting for batch of images:");
+	Dialog.addMessage("Define the grouping of images:");
+	Dialog.addMessage(" - there are " + fileList.length + " files...");
+	Dialog.addChoice("Set batches by:", newArray("number of batches", "images per batch"));
+	Dialog.addNumber("How many batches...?", 10);
+	Dialog.addNumber("or how many images per batch?", 10);
+	Dialog.show(); 
+	batchDefinition = Dialog.getChoice();
+	numberOfBatches = Dialog.getNumber();
+	filesPerBatch = Dialog.getNumber();
+	}
 
 if (groupingImages == groupingImagesArray[0]) {
 	groupList = getUniqueWellListCV7000(fileList, displayGroup);
@@ -91,11 +101,17 @@ if (groupingImages == groupingImagesArray[2]) {
 	groupList = getUniqueWellFieldListCV7000(fileList, displayGroup);
 	print("Number of unique well-fields:", groupList.length);
 	}
-if (groupingImages == groupingImagesArray[3]) {
+if (groupingImages == groupingImagesArray[3] && batchDefinition == "number of batches") {
+	filesPerBatch = Math.ceil(fileList.length / numberOfBatches);
 	groupList = Array.getSequence(numberOfBatches);
-	filesPerBatch = floor(fileList.length / numberOfBatches);
-	print("Running " + numberOfBatches + " batches with " + filesPerBatch + " files per batch.");
+	print("Batches:", batchDefinition, "Running " + numberOfBatches + " batches with " + filesPerBatch + " files per batch.");
 	}
+if (groupingImages == groupingImagesArray[3] && batchDefinition == "images per batch") {
+	numberOfBatches = Math.ceil(fileList.length / filesPerBatch);
+	groupList = Array.getSequence(numberOfBatches);
+	print("Batches:", batchDefinition, "Running " + numberOfBatches + " batches with " + filesPerBatch + " files per batch.");
+	}
+
 
 textWindowName = "Interactive Instructions";
 textWindow = "["+textWindowName+"]";
@@ -112,8 +128,9 @@ print(textWindow, "See follow macro instructions\nand see instructions in Log wi
 	IJ.closeWindow("Cell Counter");
 	//close("Cell Counter");
 	}*/
-  
+ 
 for (currentGroup = 0; currentGroup < groupList.length; currentGroup++) {
+firstImage = "NOT A STACK";
 
 	if (groupingImages == groupingImagesArray[3]) { //  = batch of images
 		groupFileList = Array.slice(fileList, currentGroup * filesPerBatch, currentGroup * filesPerBatch + filesPerBatch);
@@ -128,7 +145,7 @@ for (currentGroup = 0; currentGroup < groupList.length; currentGroup++) {
 	groupFileListTextFile = File.open(outputPath + groupFileListTextFileName);
 	print(groupFileListTextFile, "Group\tSlice\tFile name"); //write header in FileListGroup text file
 
-	//setBatchMode(true);
+	setBatchMode(true);
 	for (currentGroupFile = 0; currentGroupFile < groupFileList.length; currentGroupFile++) {
 		// open files one after the other...
 		IJ.redirectErrorMessages();
@@ -137,10 +154,39 @@ for (currentGroup = 0; currentGroup < groupList.length; currentGroup++) {
 		print("opened image", currentImage);
 		print(groupFileListTextFile, groupList[currentGroup] + "\t" + (currentGroupFile+1) + "\t" + groupFileList[currentGroupFile]); //store FileListGroup as text file
 		//showProgress(currentGroupFile / groupFileList.length);
+		if (nSlices > 1) {
+			numberOfChannels = nSlices;
+			for (currentChannel = 1; currentChannel <= numberOfChannels; currentChannel++) {
+				Property.setSliceLabel(currentImage + "_C0" + currentChannel, currentChannel);
+				}
+			if (nImages == 1) {
+				firstImage = currentImage;
+				print("found " + numberOfChannels +" channels...");
+				//fileName = File.nameWithoutExtension;   //getTitle(); for saving later, name of stack
+				} else {  // join current image to stack
+				if (nImages > 1) run("Concatenate...", " title=[" + firstImage + "] image1=[" + firstImage + "] image2=[" + currentImage + "] image3=[-- None --]");
+				}
+			} 
 		}
-	
+	setBatchMode(false);
+
 	File.close(groupFileListTextFile); //save text file with file names
-	run("Images to Stack");
+	if (firstImage == "NOT A STACK") {
+		run("Images to Stack");   // make stack from single images
+		} else {
+		run("Stack to Hyperstack...", "order=xyczt(default) channels=" + numberOfChannels + " slices=1 frames=" + groupFileList.length + " display=Grayscale");	
+		run("Channels Tool...");
+		Stack.setDisplayMode("composite");
+		}
+	if (makeMontage) {
+		tempImageName = getTitle();
+		montageColumns = Math.ceil(Math.sqrt(groupFileList.length));
+		montageRows = Math.ceil(groupFileList.length / montageColumns);
+		print("make montage of " + groupFileList.length + " images as " + montageColumns + " by " + montageRows + " matrix");
+		run("Make Montage...", "columns=" + montageColumns + " rows=" + montageRows + " scale=1");
+		print("montage has image dimensions of width: " + getWidth() + " and height: " + getHeight());	
+		close(tempImageName);
+		}
 	rename("ImageGroup_" + groupList[currentGroup]);  //now ready for Cell Counter
 
 	if (currentGroup == 0) {
