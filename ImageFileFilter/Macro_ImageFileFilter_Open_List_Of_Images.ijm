@@ -78,7 +78,7 @@ for (currentFile = 0; currentFile < fileList.length; currentFile++) {
 		open(fileList[currentFile]);
 		}	
     if (nImages > 0) {			//if image is open  
-   		if (currentFile == 0) fileName = getTitle();
+   		fileName = getTitle();
 		print("opened (" + (currentFile + 1) + "/" + fileList.length + "):", fileList[currentFile]);  //to log window
 
 //////////// START: add here some code to be run on each image   ///////////////////////
