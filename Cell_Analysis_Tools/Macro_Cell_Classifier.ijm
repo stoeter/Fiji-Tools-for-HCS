@@ -110,6 +110,13 @@ if (groupingImages == groupingImagesArray[3] && batchDefinition == "images per b
 	print("Batches:", batchDefinition, "Running " + numberOfBatches + " batches with " + filesPerBatch + " files per batch.");
 	}
 
+Dialog.create("Which batch to start with?");
+Dialog.addMessage("Select the starting batch (will skip batche before) :");
+Dialog.addMessage(" - there are " + numberOfBatches + " batches... (first batch = 0 )");
+Dialog.addChoice("Set starting batches:", Array.getSequence(numberOfBatches), 0);
+Dialog.show(); 
+batchStart = Dialog.getChoice();
+
 textWindowName = "Interactive Instructions";
 textWindow = "["+textWindowName+"]";
 if (isOpen(textWindowName)) 
@@ -126,7 +133,7 @@ print(textWindow, "See follow macro instructions\nand see instructions in Log wi
 	//close("Cell Counter");
 	}*/
  
-for (currentGroup = 0; currentGroup < groupList.length; currentGroup++) {
+for (currentGroup = batchStart; currentGroup < groupList.length; currentGroup++) {
 firstImage = "NOT A STACK";
 
 	if (groupingImages == groupingImagesArray[3]) { //  = batch of images
@@ -138,6 +145,12 @@ firstImage = "NOT A STACK";
 
 	//write names of opened files into text file
 	groupFileListTextFileName = "FileListGroup_" + groupList[currentGroup] + ".txt";  // file name of text file (groupFileListTextFile) which stores image paths
+	if (File.exists(outputPath + groupFileListTextFileName)) showMessage("Warning !!!", "<html>"  // warn user that file list .txt file will be overwritten
+		+"<h3>This file exists and will be overwritten!</h3>"
+		+"<ul>"
+		+"<li>" + outputPath + groupFileListTextFileName 
+		+"<li>Rename/move that file now, otherwise it will be overwritten!"
+		+"</ul>");
 	print("save list of opened files in text file: " + groupFileListTextFileName);
 	groupFileListTextFile = File.open(outputPath + groupFileListTextFileName);
 	print(groupFileListTextFile, "Group\tSlice\tFile name"); //write header in FileListGroup text file
