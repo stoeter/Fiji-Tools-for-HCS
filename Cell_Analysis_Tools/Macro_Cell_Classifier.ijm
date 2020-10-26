@@ -7,7 +7,7 @@ macroDescription = "This macro helps to classify cells or objects." +
 	"<br>- Select ouput folder for saving files (class model, classification results)" + 
 	"<br>- Follow the instructions and read the Wiki page for help!" + 
 	"<br>- HINT: user + and - keys to zoom in and out, use < and > keys to move stack slices forth and back.";
-macroRelease = "third release 07-10-2020 by Martin Stöter (stoeter(at)mpi-cbg.de)";
+macroRelease = "fourth release 26-10-2020 by Martin Stöter (stoeter(at)mpi-cbg.de)";
 generalHelpURL = "https://github.com/stoeter/Fiji-Tools-for-HCS/wiki";
 macroHelpURL = generalHelpURL + "/" + macroName;
 macroHtml = "<html>" 
@@ -199,7 +199,7 @@ firstImage = "NOT A STACK";
 		}
 	rename("ImageGroup_" + groupList[currentGroup]);  //now ready for Cell Counter
 
-	if (currentGroup == 0) {
+	if (currentGroup == batchStart) {
 		run("Cell Counter");
 		waitForUser("Please make sure only one 'Cell Counter' windows is open...");
 		printInstructionsToLog();  // see function below... 
