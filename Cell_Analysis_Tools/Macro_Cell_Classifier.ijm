@@ -66,7 +66,7 @@ groupingImagesArray = newArray("per well", "per field", "per well-field", "batch
 
 Dialog.create("Setting for analysis");
 Dialog.addMessage("Define the grouping of images:");
-Dialog.addChoice("Load one group of", groupingImagesArray, groupingImagesArray[0]);
+Dialog.addChoice("Load one group of", groupingImagesArray, groupingImagesArray[3]);
 Dialog.addCheckbox("Display unique values for group?", false);
 Dialog.addCheckbox("Make montage from group of images?", false);
 Dialog.show(); 
@@ -78,13 +78,13 @@ if (groupingImages == groupingImagesArray[3]) {
 	Dialog.create("Setting for batch of images:");
 	Dialog.addMessage("Define the grouping of images:");
 	Dialog.addMessage(" - there are " + fileList.length + " files...");
-	Dialog.addChoice("Set batches by:", newArray("number of batches", "images per batch"));
-	Dialog.addNumber("How many batches...?", 10);
-	Dialog.addNumber("or how many images per batch?", 10);
+	Dialog.addChoice("Set batches by:", newArray("images per batch", "number of batches"));
+	Dialog.addNumber("How many images per batch ...?", 10);
+	Dialog.addNumber("or how many batches?", 10);
 	Dialog.show(); 
 	batchDefinition = Dialog.getChoice();
-	numberOfBatches = Dialog.getNumber();
 	filesPerBatch = Dialog.getNumber();
+	numberOfBatches = Dialog.getNumber();
 	}
 
 if (groupingImages == groupingImagesArray[0]) {
@@ -110,13 +110,17 @@ if (groupingImages == groupingImagesArray[3] && batchDefinition == "images per b
 	print("Batches:", batchDefinition, "Running " + numberOfBatches + " batches with " + filesPerBatch + " files per batch.");
 	}
 
-Dialog.create("Which batch to start with?");
-Dialog.addMessage("Select the starting batch (will skip batche before) :");
-Dialog.addMessage(" - there are " + numberOfBatches + " batches... (first batch = 0 )");
-Dialog.addChoice("Set starting batches:", Array.getSequence(numberOfBatches), 0);
-Dialog.show(); 
-batchStart = Dialog.getChoice();
-
+if (groupList.length > 1) {
+	Dialog.create("Which batch to start with?");
+	Dialog.addMessage("Select the starting batch (will skip batche before) :");
+	Dialog.addMessage(" - there are " + numberOfBatches + " batches... (first batch = 0 )");
+	Dialog.addChoice("Set starting batches:", Array.getSequence(numberOfBatches), 0);
+	Dialog.show(); 
+	batchStart = Dialog.getChoice();
+	} else {
+	batchStart = 0;
+	}
+	
 textWindowName = "Interactive Instructions";
 textWindow = "["+textWindowName+"]";
 if (isOpen(textWindowName)) 
@@ -149,13 +153,14 @@ firstImage = "NOT A STACK";
 		+"<h3>This file exists and will be overwritten!</h3>"
 		+"<ul>"
 		+"<li>" + outputPath + groupFileListTextFileName 
-		+"<li>Rename/move that file now, otherwise it will be overwritten!"
+		+"<li>Rename/move that file now if you want to keep it, otherwise it will be overwritten!"
 		+"</ul>");
 	print("save list of opened files in text file: " + groupFileListTextFileName);
 	groupFileListTextFile = File.open(outputPath + groupFileListTextFileName);
 	print(groupFileListTextFile, "Group\tSlice\tFile name"); //write header in FileListGroup text file
 
 	setBatchMode(true);
+	//setBatchMode(false);  //this helped to load all the montage (Huch 004), otherwise make stack failed 
 	for (currentGroupFile = 0; currentGroupFile < groupFileList.length; currentGroupFile++) {
 		// open files one after the other...
 		IJ.redirectErrorMessages();
@@ -166,6 +171,7 @@ firstImage = "NOT A STACK";
 		//showProgress(currentGroupFile / groupFileList.length);
 		if (nSlices > 1) {
 			numberOfChannels = nSlices;
+			//waitForUser("sliches");
 			for (currentChannel = 1; currentChannel <= numberOfChannels; currentChannel++) {
 				Property.setSliceLabel(currentImage + "_C0" + currentChannel, currentChannel);
 				}
