@@ -5,7 +5,7 @@ macroDescription = "This macro reads single CV7000 images of a well as .tif ." +
 	"<br>The chosen folder will be searched for images including subfolders." +
 	"<br>All images and channels of a well are stiched." +
 	"<br>Current restrictions: C01.tif is BF channel, up to 2 fluoresent channels, no choice of color.";
-macroRelease = "fifth release 21-03-2016 by Martin Stoeter (stoeter(at)mpi-cbg.de)";
+macroRelease = "sixth release 05-03-2021 by Martin Stoeter (stoeter(at)mpi-cbg.de)";
 macroHelpURL = "https://github.com/stoeter/Fiji-Tools-for-HCS/wiki/Macro-" + macroName;
 macroHtml = "<html>" 
 	+"<font color=red>" + macroName + "\n" + macroRelease + "</font> <br> <br>"
@@ -28,10 +28,10 @@ Dialog.addHelp(macroHtml);
 Dialog.show;
 
 //choose folders
-//var inputPath = "Y:\\correctedimages\\Martin\\150716-wormEmbryo-Gunar-test2x3-lowLaser_20150716_143710\\150716-wormEmbryo-6half-days-old\\";
-//var outputPath = "C:\\Users\\stoeter\\Desktop\\TestDeleteFolder\\"; 
 inputPath = getDirectory("Choose image folder... ");
 outputPath = getDirectory("Choose result image folder... or create a folder");
+//inputPath = "C:\\Users\\stoeter\\Desktop\\TempStore\\stitchingTemp\\D05\\";
+//outputPath = "C:\\Users\\stoeter\\Desktop\\TempStore\\stitchingTemp\\output\\";
 printPaths = "inputPath = \"" + inputPath + "\";\noutputPath = \"" + outputPath + "\";";
 print(printPaths);
 
@@ -82,26 +82,68 @@ run("Close All");
 ////////////////////////////////        M A C R O   C O D E         /////////////////////////////// 
 //set array variables
 var fileExtension = ".tif";                                                  //pre-definition of extension
-var filterStrings = newArray("back","_A01_","");                                      //pre-definition of strings to filter
+var filterStrings = newArray("back","_D03_","");                                      //pre-definition of strings to filter
 var availableFilterTerms = newArray("no filtering", "include", "exclude");   //dont change this
 var filterTerms = newArray("exclude", "include", "no filtering");  //pre-definition of filter types 
 var displayFileList = false;                                                 //shall array window be shown? 
+var parameterSet = newArray("fluorescence-3x3", "BF-c.elegans-2x3");  //pre-definition of parameterSet
 setDialogImageFileFilter();
 print("Image file filter:", filterTerms[0],filterStrings[0] + ";",filterTerms[1],filterStrings[1] + ";",filterTerms[2],filterStrings[2]);
 
 //set variables for stiching
-reverseOrder = false;
-RGBstitch = true;
-blurImage = true;
-substractBackground = true;
-saveAsGreyStack = true;
-invertBFforTIF = false;
-invertBFforPNG = true;
-BFchannel = 3;
-batchMode = false;
+if (parameterSet == "BF-c.elegans-2x3") {
+	//genaral parameters
+	reverseOrder = false;
+	RGBstitch = true;
+	blurSigma = 0.8;
+	subtractBackground = true;
+	saveAsGreyStack = true;
+	invertBFforTIF = false;
+	invertBFforPNG = true;
+	BFchannel = 3;
+	batchMode = false;
+	//configure stitching algorithm
+	stitchGridX = 2;
+	stitchGridY	= 3;
+	stitchOverlapX = 10;
+	stitchOverlapY = 30;
+	stitchRegThres = 0.10; 
+	stitchMaxDispThres = 2.50; 
+	stitchAbsDispThres = 3.50;
+	//set variables according to user dialogs
+	contrastValueArray = newArray(61000,65535,20,800,20,300,0,100,0,100);  //vector of alternating min-max contrast values => newArray(ch1-min,ch1-max,ch2-min,ch2-max,ch3-min, ...)
+	channelToRGBArray = newArray("3","2","1");   //vector of colors (RGB channel numbers) assigned to file endings
+	bkgsubtractionTypeArray = newArray("light ", "dark", "dark");   //vector of background subtraction types ("light " for BF images, "" for fluorescence/dark background images)
+	bkgValuesubtractionArray = newArray(50,20,20);   //vector of background subtraction values / radia	
+	}
+if (parameterSet == "fluorescence-3x3") {
+	//genaral parameters
+	reverseOrder = false;
+	RGBstitch = true;
+	blurSigma = 0;
+	subtractBackground = false;
+	saveAsGreyStack = true;
+	invertBFforTIF = false;
+	invertBFforPNG = false;
+	BFchannel = 3;
+	batchMode = false;
+	//configure stitching algorithm
+	stitchGridX = 3;
+	stitchGridY	= 3;
+	stitchOverlapX = 1;
+	stitchOverlapY = 1;
+	stitchRegThres = 0.10; 
+	stitchMaxDispThres = 2.50; 
+	stitchAbsDispThres = 3.50;
+	//set variables according to user dialogs
+	contrastValueArray = newArray(20,2000,20,800,20,300,0,100,0,100);  //vector of alternating min-max contrast values => newArray(ch1-min,ch1-max,ch2-min,ch2-max,ch3-min, ...)
+	channelToRGBArray = newArray("1","2","3");   //vector of colors (RGB channel numbers) assigned to file endings
+	bkgsubtractionTypeArray = newArray("dark", "dark", "dark");   //vector of background subtraction types ("light " for BF images, "" for fluorescence/dark background images)
+	bkgValuesubtractionArray = newArray(100,50,50);   //vector of background subtraction values / radia
+	}	
 Dialog.create("How to stich the images?");
-Dialog.addCheckbox("Subtract background before stitching?", substractBackground);	//if checked background will be subtracted
-Dialog.addCheckbox("Blur images before stitching?", blurImage);	//if checked Gaussian blur with radius = 0.8 will applied before subtraction to reduce camera noise
+Dialog.addCheckbox("Subtract background before stitching?", subtractBackground);	//if checked background will be subtracted
+Dialog.addNumber("Blur images before stitching? (0 = no blurring)", blurSigma);	//if checked Gaussian blur with radius = 0.8 will applied before subtraction to reduce camera noise
 Dialog.addCheckbox("Merge channels and stich as RGB?", RGBstitch);	//if checked files will be merged as RGB (with auto-contrast) before stiching (channels fixed to each other)
 Dialog.addCheckbox("Reverse order for first-channel stitching?", reverseOrder);	//if checked loaded file list will be reverse and images will be merged based on last image
 Dialog.addCheckbox("Save merged channels as grey stack?", saveAsGreyStack);	//if checked merged stiched images are saved as grey stack .tif
@@ -110,8 +152,8 @@ Dialog.addCheckbox("Invert brightfield image for .png?", invertBFforPNG);	//if c
 Dialog.addNumber("Brightfield is in RGB channel:", BFchannel);	 //which channel is bright field
 Dialog.addCheckbox("Switch of image display?", batchMode);	//if checked batch mode prevents image display
 Dialog.show();
-substractBackground = Dialog.getCheckbox();
-blurImage = Dialog.getCheckbox();
+subtractBackground = Dialog.getCheckbox();
+blurSigma = Dialog.getNumber();
 RGBstitch = Dialog.getCheckbox();
 reverseOrder = Dialog.getCheckbox();
 saveAsGreyStack = Dialog.getCheckbox();
@@ -119,16 +161,9 @@ invertBFforTIF = Dialog.getCheckbox();
 invertBFforPNG = Dialog.getCheckbox();
 BFchannel = Dialog.getNumber();
 batchMode = Dialog.getCheckbox();
-print("subtract background:", substractBackground, "\nblur image:", blurImage, "\nused RGB for stiching:", RGBstitch, "\nreverse order of channel for stiching:", reverseOrder, "\n.tif saved as grey stack:", saveAsGreyStack , "\nbright field image inverted [.tif, .png, RGB channel]:", invertBFforTIF, invertBFforPNG, BFchannel, "\nbatch mode:", batchMode);
+print("subtract background:", subtractBackground, "\nblur radius:", blurSigma, "\nused RGB for stiching:", RGBstitch, "\nreverse order of channel for stiching:", reverseOrder, "\n.tif saved as grey stack:", saveAsGreyStack , "\nbright field image inverted [.tif, .png, RGB channel]:", invertBFforTIF, invertBFforPNG, BFchannel, "\nbatch mode:", batchMode);
 
 //configure stitching algorithm
-stitchGridX = 2;
-stitchGridY	= 3;
-stitchOverlapX = 10;
-stitchOverlapY = 30;
-stitchRegThres = 0.10; 
-stitchMaxDispThres = 2.50; 
-stitchAbsDispThres = 3.50;
 Dialog.create("Set stitching parameters");
 Dialog.addNumber("Number of images in x:", stitchGridX);	//set number of images in one row
 Dialog.addNumber("Number of images in y:", stitchGridY);	//set number of imgages in one column
@@ -159,37 +194,47 @@ wellList = getUniqueWellListCV7000(fileList, displayFileList);
 wellFieldList = getUniqueWellFieldListCV7000(fileList, displayFileList);
 fieldList = getUniqueFieldListCV7000(fileList, displayFileList);
 channelList = getUniqueChannelListCV7000(fileList, displayFileList);
+Array.print(channelList);
+fileEndArray = newArray(channelList.length);
+for (currentChannel = 0; currentChannel < channelList.length; currentChannel++) {   // go through all available channels and make e.g.: fileEndArray = newArray("C01.tif","C02.tif","C03.tif");
+	fileEndArray[currentChannel] = channelList[currentChannel] + ".tif";
+	}
+//Array.print(fileEndArray);
 
 //waitForUser("Do you really want to open " + fileList.length + " files?" + "\n\n" + "Otherwise press 'ESC' and check image list and filter text!");
 setBatchMode(batchMode);
 
-//set variables according to user dialogs
-contrastValueArray = newArray(61000,65535,20,800,20,300,0,100,0,100);  //vector of alternating min-max contrast values => newArray(ch1-min,ch1-max,ch2-min,ch2-max,ch3-min, ...)
-fileEndArray = newArray("C01.tif","C02.tif","C03.tif");  //vector of a file endings of individual channels
-channelToRGBArray = newArray(3,2,1);   //vector of colors (RGB channel numbers) assigned to file endings
-bkgValueSubstractionArray = newArray(50,20,20);   //vector of background subtraction values / radia
 if (true) {
 	fileTag = "_RGB";
 	Dialog.create("Set contrast values for RGB merge");
 	Dialog.addMessage("Red = 1, Green = 2, Blue = 3");
 	for (currentChannel = 0; currentChannel < channelList.length; currentChannel++) {
 		Dialog.addMessage("--------------------------------------------");
-		Dialog.addNumber("Color of channel ends with " + fileEndArray[currentChannel] + ":", channelToRGBArray[currentChannel]);	 //which channel is which color in RGB
-		Dialog.addNumber("Background subtraction radius " + channelList[currentChannel] + ":", bkgValueSubstractionArray[currentChannel]);	 //which channel i
+		Dialog.addChoice("Color of channel ends with " + fileEndArray[currentChannel] + ":", channelToRGBArray, channelToRGBArray[currentChannel]);	 //which channel is which color in RGB
+		if (subtractBackground) {
+			Dialog.addNumber("Background subtraction radius " + channelList[currentChannel] + ":", bkgValuesubtractionArray[currentChannel]);	 //set background subtraction radius
+			Dialog.addChoice("Background subtraction type (light for brightfield) " + channelList[currentChannel] + ":", bkgsubtractionTypeArray[currentChannel]);	 //set background subtraction radius
+			}
 		Dialog.addNumber("Set minimum intensity channel " + channelList[currentChannel] +":", contrastValueArray[currentChannel * 2]);	//set value for min
 		Dialog.addNumber("Set maximum intensity channel " + channelList[currentChannel] +":", contrastValueArray[currentChannel * 2 + 1]);	//set value for max
 		}
 	Dialog.show();
 	for (currentChannel = 0; currentChannel < channelList.length; currentChannel++) {
-		channelToRGBArray[currentChannel] = Dialog.getNumber();
-		bkgValueSubstractionArray[currentChannel] = Dialog.getNumber();
+		channelToRGBArray[currentChannel] = Dialog.getChoice();
+		if (subtractBackground) {
+			bkgValuesubtractionArray[currentChannel] = Dialog.getNumber();
+			bkgsubtractionTypeArray[currentChannel] = Dialog.getChoice();
+			if (bkgsubtractionTypeArray[currentChannel] == "dark") bkgsubtractionTypeArray[currentChannel] = "";  // replace dialog value "dark" with "" for default setting when calling the function bkgsubtraction
+			}
 		contrastValueArray[currentChannel * 2] = Dialog.getNumber();
 		contrastValueArray[currentChannel * 2 + 1]  = Dialog.getNumber();
-		print("channel " + channelList[currentChannel] + ": ends with", fileEndArray[currentChannel], "is assigned to RGB channel", channelToRGBArray[currentChannel] + "; bkg subtraction =", bkgValueSubstractionArray[currentChannel] + ", contrast min =", contrastValueArray[currentChannel * 2], "and max =", contrastValueArray[currentChannel * 2 + 1]);  
+		print("channel " + channelList[currentChannel] + ": ends with", fileEndArray[currentChannel], "is assigned to RGB channel", channelToRGBArray[currentChannel] + ", contrast min =", contrastValueArray[currentChannel * 2], "and max =", contrastValueArray[currentChannel * 2 + 1]);  
+		if (subtractBackground) print("channel " + channelList[currentChannel] + ": bkg subtraction =", bkgValuesubtractionArray[currentChannel] + "; bkg subtraction =", bkgsubtractionTypeArray[currentChannel]);  
 		}
 	} else {
 	fileTag = "_allCh";
 	}
+
 	
 print("===== starting processing.... =====");
 //go through all files
@@ -214,15 +259,6 @@ for (currentWell = 0; currentWell < wellList.length; currentWell++) {   // well 
 			showProgress(currentFile / wellChannelFileList.length);
 	       	showStatus("processing" + fileList[currentFile]);
 			print("opened (" + (currentFile + 1) + "/" + wellChannelFileList.length + "):", wellChannelFileList[currentFile]);  //to log window
-			//image is open, now apply blur and bkg subtraction to each channel
-			if (blurImage) run("Gaussian Blur...", "sigma=0.80");
-			if (substractBackground) {
-				if (endsWith(wellChannelFileList[currentFile], "C01.tif")) run("Subtract Background...", "rolling=" + bkgValueSubstractionArray[currentChannel] +  " light");  //brightfield
-				if (endsWith(wellChannelFileList[currentFile], "C02.tif")) run("Subtract Background...", "rolling=" + bkgValueSubstractionArray[currentChannel] +  " stack");
-				if (endsWith(wellChannelFileList[currentFile], "C03.tif")) run("Subtract Background...", "rolling=" + bkgValueSubstractionArray[currentChannel] +  " stack");		
-				}
-			//run("Measure"); getStatistics(area, mean, min, max, std, histogram); print(area, mean, min, max, std);
-			//setMinAndMax(contrastValueArray[currentChannel * 2], contrastValueArray[currentChannel * 2 + 1]);
 			if (currentFile == 0) {
 				firstImage = currentImage;
 				fileName = File.nameWithoutExtension;   //getTitle(); for saving later, name of stack
@@ -234,9 +270,25 @@ for (currentWell = 0; currentWell < wellList.length; currentWell++) {   // well 
 				if (nImages > 1) run("Concatenate...", "  title=[" + firstImage + "] image1=" + firstImage + " image2=" + currentImage + " image3=[-- None --]");
 				}
 			} //end for all images per channel
-		// all wellFields are open for one channel, now merge and save to RGB or merge stack
+		// all wellFields are open for one channel, now blur, background subtract, merge and save to RGB or merge stack
+		if (blurSigma > 0) {
+			print("Gaussian Blur...", "sigma=" + blurSigma + " stack");
+			run("Gaussian Blur...", "sigma=" + blurSigma + " stack");
+			}
+		if (subtractBackground) {
+			print("Subtract Background...", "rolling=" + bkgValuesubtractionArray[currentChannel] + bkgsubtractionTypeArray); 
+			run("Subtract Background...", "rolling=" + bkgValuesubtractionArray[currentChannel] + bkgsubtractionTypeArray); 
+			}
+		//{
+			//	if (endsWith(wellChannelFileList[currentFile], "C01.tif")) run("Subtract Background...", "rolling=" + bkgValuesubtractionArray[currentChannel] +  " light");  //brightfield
+				//if (endsWith(wellChannelFileList[currentFile], "C02.tif")) run("Subtract Background...", "rolling=" + bkgValuesubtractionArray[currentChannel] +  " stack");
+				//if (endsWith(wellChannelFileList[currentFile], "C03.tif")) run("Subtract Background...", "rolling=" + bkgValuesubtractionArray[currentChannel] +  " stack");		
+				//}
+
 		for (currentRGBChannel = 0; currentRGBChannel < channelList.length; currentRGBChannel++) {  
-			if (endsWith(firstImage, fileEndArray[currentRGBChannel])) mergeChannelString = mergeChannelString + " c" + channelToRGBArray[currentRGBChannel] + "=" + getTitle(); //generate merge string by checking each file end
+			if (endsWith(firstImage, fileEndArray[currentRGBChannel])) {
+				mergeChannelString = mergeChannelString + " c" + channelToRGBArray[currentRGBChannel] + "=" + getTitle(); //generate merge string by checking each file end
+				}
 			}	
 		if (reverseOrder) run("Reverse");
 		//set contrast
@@ -352,6 +404,7 @@ for (i = 0; i < filterStrings.length; i++) {
 	Dialog.addChoice((i + 1) + ") Files with text are included/excluded?", availableFilterTerms, filterTerms[i]);	
 	}
 Dialog.addCheckbox("Check file lists?", displayFileList);	//if check file lists will be displayed
+Dialog.addChoice("Select default stitching parameters:", parameterSet, parameterSet[0]);	
 Dialog.show();
 fileExtension = Dialog.getString();
 for (i = 0; i < filterStrings.length; i++) {
@@ -359,6 +412,7 @@ for (i = 0; i < filterStrings.length; i++) {
 	filterTerms[i] = Dialog.getChoice();	
 	}
 displayFileList = Dialog.getCheckbox();
+parameterSet = Dialog.getChoice();
 }
 
 //function filters a file list for a certain strings
