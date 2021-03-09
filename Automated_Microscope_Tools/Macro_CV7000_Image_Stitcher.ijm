@@ -5,7 +5,7 @@ macroDescription = "This macro reads single CV7000 images of a well as .tif ." +
 	"<br>The chosen folder will be searched for images including subfolders." +
 	"<br>All images and channels of a well are stiched." +
 	"<br>Current restrictions: C01.tif is BF channel, up to 2 fluoresent channels, no choice of color.";
-macroRelease = "sixth release 05-03-2021 by Martin Stoeter (stoeter(at)mpi-cbg.de)";
+macroRelease = "sixth release 09-03-2021 by Martin Stoeter (stoeter(at)mpi-cbg.de)";
 macroHelpURL = "https://github.com/stoeter/Fiji-Tools-for-HCS/wiki/Macro-" + macroName;
 macroHtml = "<html>" 
 	+"<font color=red>" + macroName + "\n" + macroRelease + "</font> <br> <br>"
@@ -113,8 +113,8 @@ if (parameterSet == "BF-c.elegans-2x3") {
 	//set variables according to user dialogs
 	contrastValueArray = newArray(61000,65535,20,800,20,300,0,100,0,100);  //vector of alternating min-max contrast values => newArray(ch1-min,ch1-max,ch2-min,ch2-max,ch3-min, ...)
 	channelToRGBArray = newArray("3","2","1");   //vector of colors (RGB channel numbers) assigned to file endings
-	bkgsubtractionTypeArray = newArray("light ", "dark", "dark");   //vector of background subtraction types ("light " for BF images, "" for fluorescence/dark background images)
-	bkgValuesubtractionArray = newArray(50,20,20);   //vector of background subtraction values / radia	
+	bkgSubtractionTypeArray = newArray("light ", "dark", "dark");   //vector of background subtraction types ("light " for BF images, "" for fluorescence/dark background images)
+	bkgSubtractionValueArray = newArray(50,20,20);   //vector of background subtraction values / radia	
 	}
 if (parameterSet == "fluorescence-3x3") {
 	//genaral parameters
@@ -138,8 +138,8 @@ if (parameterSet == "fluorescence-3x3") {
 	//set variables according to user dialogs
 	contrastValueArray = newArray(20,2000,20,800,20,300,0,100,0,100);  //vector of alternating min-max contrast values => newArray(ch1-min,ch1-max,ch2-min,ch2-max,ch3-min, ...)
 	channelToRGBArray = newArray("1","2","3");   //vector of colors (RGB channel numbers) assigned to file endings
-	bkgsubtractionTypeArray = newArray("dark", "dark", "dark");   //vector of background subtraction types ("light " for BF images, "" for fluorescence/dark background images)
-	bkgValuesubtractionArray = newArray(100,50,50);   //vector of background subtraction values / radia
+	bkgSubtractionTypeArray = newArray("dark", "dark", "dark");   //vector of background subtraction types ("light " for BF images, "" for fluorescence/dark background images)
+	bkgSubtractionValueArray = newArray(100,50,50);   //vector of background subtraction values / radia
 	}	
 Dialog.create("How to stich the images?");
 Dialog.addCheckbox("Subtract background before stitching?", subtractBackground);	//if checked background will be subtracted
@@ -212,8 +212,8 @@ if (true) {
 		Dialog.addMessage("--------------------------------------------");
 		Dialog.addChoice("Color of channel ends with " + fileEndArray[currentChannel] + ":", channelToRGBArray, channelToRGBArray[currentChannel]);	 //which channel is which color in RGB
 		if (subtractBackground) {
-			Dialog.addNumber("Background subtraction radius " + channelList[currentChannel] + ":", bkgValuesubtractionArray[currentChannel]);	 //set background subtraction radius
-			Dialog.addChoice("Background subtraction type (light for brightfield) " + channelList[currentChannel] + ":", bkgsubtractionTypeArray[currentChannel]);	 //set background subtraction radius
+			Dialog.addNumber("Background subtraction radius " + channelList[currentChannel] + ":", bkgSubtractionValueArray[currentChannel]);	 //set background subtraction radius
+			Dialog.addChoice("Background subtraction type (light for brightfield) " + channelList[currentChannel] + ":", newArray("dark", " light"), bkgSubtractionTypeArray[currentChannel]);	 //set background subtraction type (dark for fluorescence images, "light " for brightfield images)
 			}
 		Dialog.addNumber("Set minimum intensity channel " + channelList[currentChannel] +":", contrastValueArray[currentChannel * 2]);	//set value for min
 		Dialog.addNumber("Set maximum intensity channel " + channelList[currentChannel] +":", contrastValueArray[currentChannel * 2 + 1]);	//set value for max
@@ -222,14 +222,14 @@ if (true) {
 	for (currentChannel = 0; currentChannel < channelList.length; currentChannel++) {
 		channelToRGBArray[currentChannel] = Dialog.getChoice();
 		if (subtractBackground) {
-			bkgValuesubtractionArray[currentChannel] = Dialog.getNumber();
-			bkgsubtractionTypeArray[currentChannel] = Dialog.getChoice();
-			if (bkgsubtractionTypeArray[currentChannel] == "dark") bkgsubtractionTypeArray[currentChannel] = "";  // replace dialog value "dark" with "" for default setting when calling the function bkgsubtraction
+			bkgSubtractionValueArray[currentChannel] = Dialog.getNumber();
+			bkgSubtractionTypeArray[currentChannel] = Dialog.getChoice();
+			if (bkgSubtractionTypeArray[currentChannel] == "dark") bkgSubtractionTypeArray[currentChannel] = "";  // replace dialog value "dark" with "" for default setting when calling the function bkgsubtraction
 			}
 		contrastValueArray[currentChannel * 2] = Dialog.getNumber();
 		contrastValueArray[currentChannel * 2 + 1]  = Dialog.getNumber();
 		print("channel " + channelList[currentChannel] + ": ends with", fileEndArray[currentChannel], "is assigned to RGB channel", channelToRGBArray[currentChannel] + ", contrast min =", contrastValueArray[currentChannel * 2], "and max =", contrastValueArray[currentChannel * 2 + 1]);  
-		if (subtractBackground) print("channel " + channelList[currentChannel] + ": bkg subtraction =", bkgValuesubtractionArray[currentChannel] + "; bkg subtraction =", bkgsubtractionTypeArray[currentChannel]);  
+		if (subtractBackground) print("channel " + channelList[currentChannel] + ": bkg subtraction radius =", bkgSubtractionValueArray[currentChannel] + "; bkg subtraction type =", bkgSubtractionTypeArray[currentChannel]);  
 		}
 	} else {
 	fileTag = "_allCh";
@@ -276,15 +276,9 @@ for (currentWell = 0; currentWell < wellList.length; currentWell++) {   // well 
 			run("Gaussian Blur...", "sigma=" + blurSigma + " stack");
 			}
 		if (subtractBackground) {
-			print("Subtract Background...", "rolling=" + bkgValuesubtractionArray[currentChannel] + bkgsubtractionTypeArray); 
-			run("Subtract Background...", "rolling=" + bkgValuesubtractionArray[currentChannel] + bkgsubtractionTypeArray); 
+			print("Subtract Background...", "rolling=" + d2s(bkgSubtractionValueArray[currentChannel], 0) + bkgSubtractionTypeArray[currentChannel] + " stack"); // value needs to be converted to string ohterwise NaN!?
+			run("Subtract Background...", "rolling=" + d2s(bkgSubtractionValueArray[currentChannel], 0) + bkgSubtractionTypeArray[currentChannel] + " stack"); 
 			}
-		//{
-			//	if (endsWith(wellChannelFileList[currentFile], "C01.tif")) run("Subtract Background...", "rolling=" + bkgValuesubtractionArray[currentChannel] +  " light");  //brightfield
-				//if (endsWith(wellChannelFileList[currentFile], "C02.tif")) run("Subtract Background...", "rolling=" + bkgValuesubtractionArray[currentChannel] +  " stack");
-				//if (endsWith(wellChannelFileList[currentFile], "C03.tif")) run("Subtract Background...", "rolling=" + bkgValuesubtractionArray[currentChannel] +  " stack");		
-				//}
-
 		for (currentRGBChannel = 0; currentRGBChannel < channelList.length; currentRGBChannel++) {  
 			if (endsWith(firstImage, fileEndArray[currentRGBChannel])) {
 				mergeChannelString = mergeChannelString + " c" + channelToRGBArray[currentRGBChannel] + "=" + getTitle(); //generate merge string by checking each file end
