@@ -160,7 +160,7 @@ firstImage = "NOT A STACK";
 	print(groupFileListTextFile, "Group\tSlice\tFile name"); //write header in FileListGroup text file
 
 	setBatchMode(true);
-	//setBatchMode(false);  //this helped to load all the montage (Huch 004), otherwise make stack failed 
+	setBatchMode(false);  //this helped to load all the montage (Huch 004), otherwise make stack failed 
 	for (currentGroupFile = 0; currentGroupFile < groupFileList.length; currentGroupFile++) {
 		// open files one after the other...
 		IJ.redirectErrorMessages();
@@ -251,6 +251,7 @@ print("   - document elsewhere class number & name (e.g. .txt), because the clas
 print("   - once the Cell Counter is closed your class names will be lost... -> make new with [Rename]!");	
 print("   - use [Options] to set the color for each class (also wont be saved in .xml!)");		
 print("\nChapter 2: Classify your objects:");
+print("- make sure the multi-point tool is selected in the Fiji tool bar (7th icon)");
 print("- select a class (e.g. Class normal)");
 print("- right click on image into center of object => class number appears");
 print("- classify all objects you want in all images...");	
