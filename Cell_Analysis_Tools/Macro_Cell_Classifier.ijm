@@ -74,6 +74,7 @@ groupingImages = Dialog.getChoice();
 displayGroup = Dialog.getCheckbox();
 makeMontage = Dialog.getCheckbox();
 
+batchDefinition = "";
 if (groupingImages == groupingImagesArray[3]) {
 	Dialog.create("Setting for batch of images:");
 	Dialog.addMessage("Define the grouping of images:");
@@ -89,14 +90,17 @@ if (groupingImages == groupingImagesArray[3]) {
 
 if (groupingImages == groupingImagesArray[0]) {
 	groupList = getUniqueWellListCV7000(fileList, displayGroup);
+	numberOfBatches = groupList.length;
 	print("Number of unique wells:", groupList.length);
 	}
 if (groupingImages == groupingImagesArray[1]) {
 	groupList = getUniqueFieldListCV7000(fileList, displayGroup);
+	numberOfBatches = groupList.length;
 	print("Number of unique fields:", groupList.length);
 	}
 if (groupingImages == groupingImagesArray[2]) {
 	groupList = getUniqueWellFieldListCV7000(fileList, displayGroup);
+	numberOfBatches = groupList.length;
 	print("Number of unique well-fields:", groupList.length);
 	}
 if (groupingImages == groupingImagesArray[3] && batchDefinition == "number of batches") {
