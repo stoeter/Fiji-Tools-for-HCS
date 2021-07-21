@@ -97,7 +97,7 @@ channelList = getUniqueChannelListCV7000(fileList, displayMetaData);
 zplaneList = getUniqueZplaneListCV7000(fileList, displayMetaData);
 print(wellList.length, "wells found\n", wellFieldList.length, "well x fields found\n", fieldList.length, "fields found\n", channelList.length, "channels found\n", zplaneList.length, "z-planes found\n");
 stackSize = fileList.length / wellList.length / channelList.length / zplaneList.length;
-print("Assuming stacks with ", stackSize, "planes. Please check if this is correct!");
+print("Assuming wells with ", stackSize, "fields. Please check if this is correct!");
 if(displayFileList || displayMetaData) waitForUser("Take a look at the list windows...");  //give user time to analyse the lists  
 
 //set montage type
@@ -105,7 +105,7 @@ montageColumn = Math.ceil(stackSize / 2);
 montageRow = Math.floor(stackSize / 2);
 Dialog.create("Set montage type");
 Dialog.addNumber("Montage columns:", montageColumn);
-Dialog.addNumber("Montage ows:", montageRow);
+Dialog.addNumber("Montage rows:", montageRow);
 Dialog.addChoice("montage file tag:", availableMontageFileTags);
 Dialog.addCheckbox("Set batch mode (hide images)?", batchMode);	//if checked no images will be displayed
 Dialog.show();
@@ -127,7 +127,7 @@ setBatchMode(batchMode);
 
 //go through all files
 for (currentWell = 0; currentWell < wellList.length; currentWell++) {   // well by well
-print("well (" + (currentWell + 1) + "/" + wellList.length + ") ...");  //to log window
+	print("well (" + (currentWell + 1) + "/" + wellList.length + ") ...");  //to log window
 	for (currentChannel = 0; currentChannel < channelList.length; currentChannel++) {  // channel by channel per well
 		for (currentZplane = 0; currentZplane < zplaneList.length; currentZplane++) {  // z-plane by z-plane per channel and well
 
@@ -163,9 +163,10 @@ print("well (" + (currentWell + 1) + "/" + wellList.length + ") ...");  //to log
 			} else {  //end if images are open
 			run("Close All");
 			}
-		} //end for all channels in well			
-	saveLog(outputPath + "Log_temp_" + tempLogFileNumber + ".txt");
-	}  //end for all wells
+		}
+	} //end for all channels in well			
+saveLog(outputPath + "Log_temp_" + tempLogFileNumber + ".txt");
+}  //end for all wells
 			
 //print current time to Log window and save log
 getDateAndTime(year, month, dayOfWeek, dayOfMonth, hour, minute, second, msec); month++;
@@ -425,7 +426,7 @@ for (i = 1; i < inputArray.length; i++) {
 		}  //end while
 	if (valueUnique) returnedZplaneList = Array.concat(returnedZplaneList, currentZplane);  //if value was not found in array of unique values add it to the end of the array of unique values
 	}
-print(returnedZplaneList.length + " channel(s) found."); 
+print(returnedZplaneList.length + " zplane(s) found."); 
 Array.sort(returnedZplaneList);
 if (displayList) {Array.show("List of " + returnedZplaneList.length + " unique z-planes", returnedZplaneList);}	
 return returnedZplaneList;
