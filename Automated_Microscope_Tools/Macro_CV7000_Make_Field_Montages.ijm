@@ -132,9 +132,15 @@ for (currentWell = 0; currentWell < wellList.length; currentWell++) {   // well 
 		for (currentZplane = 0; currentZplane < zplaneList.length; currentZplane++) {  // z-plane by z-plane per channel and well
 
 		//define new filters and filter file list for currentWell and currentChannel
-		filterStrings = newArray(wellList[currentWell],channelList[currentChannel] + ".tif",zplaneList[currentZplane]);      //pre-definition of strings to filter, add "_" because well strings e.g. A03, L01, C02 can be in file name at other places, e.g ..._A06_T0001F001L01A03Z01C02.tif and ".tif" to excluse well C02 instead of channel C02
+		filterStrings = newArray("_" + wellList[currentWell] + "_",channelList[currentChannel] + ".tif",zplaneList[currentZplane]);      //pre-definition of strings to filter, add "_" because well strings e.g. A03, L01, C02 can be in file name at other places, e.g ..._A06_T0001F001L01A03Z01C02.tif and ".tif" to excluse well C02 instead of channel C02
 		filterTerms = newArray("include", "include", "include");  //pre-definition of filter types 
 		wellChannelFileList = getFilteredFileList(fileList, false, false);
+		
+		if(wellChannelFileList.length > montageRow * montageColumn) {
+			print("Error: too may files in file list for well " + wellList[currentWell] + ", channel: " + channelList[currentChannel] + ", z-plane: " + zplaneList[currentZplane]);
+			Array.print(wellChannelFileList);
+			break;
+		}
 		//now open all files (wellChannelFileList) that belong to one wellField in one channel
 		for (currentFile = 0; currentFile < wellChannelFileList.length; currentFile++) {
 			//image sequence & regEx would be possible, but it seems to be slow: run("Image Sequence...", "open=Y:\\correctedimages\\Martin\\150716-wormEmbryo-Gunar-test2x3-lowLaser_20150716_143710\\150716-wormEmbryo-6half-days-old\\ file=(_B03_.*C01) sort");
