@@ -1,11 +1,12 @@
 //CV7000-Make-Field-Monatges
 macroName = "CV7000-Make-Field-Montages";
-macroShortDescription = "This macro opens CV7000 images of a well-field-channel and does a z projection.";
+macroShortDescription = "This macro opens CV7000 images of a well-channel and does a montage of the fields.";
 macroDescription = "This macro reads single CV7000 images of a well as .tif ." +
 	"<br>The chosen folder will be searched for images including subfolders." +
-	"<br>All images of a unique well, field and channel are opened and projected." +
-	"<br>All z-projection methods selectable.";
-macroRelease = "first release 12-07-2021";
+	"<br>All images of a unique well and channel are opened and used for a montage." +
+	"<br>Montage settings (rows, columns) and file tag can be adjusted." +
+	"<br>Montage order of images will be alphanumerical (e.g. field position) and row-wise.";
+macroRelease = "second release 09-01-2022";
 macroAuthor = "by Martin Stöter (stoeter(at)mpi-cbg.de)";
 generalHelpURL = "https://github.com/stoeter/Fiji-Tools-for-HCS/wiki";
 macroHelpURL = generalHelpURL + "/" + macroName;
