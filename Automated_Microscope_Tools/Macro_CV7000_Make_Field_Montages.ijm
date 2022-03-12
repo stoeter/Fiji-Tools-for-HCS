@@ -132,48 +132,48 @@ for (currentWell = 0; currentWell < wellList.length; currentWell++) {   // well 
 	for (currentChannel = 0; currentChannel < channelList.length; currentChannel++) {  // channel by channel per well
 		for (currentZplane = 0; currentZplane < zplaneList.length; currentZplane++) {  // z-plane by z-plane per channel and well
 
-		//define new filters and filter file list for currentWell and currentChannel
-		filterStrings = newArray("_" + wellList[currentWell] + "_",channelList[currentChannel] + ".tif",zplaneList[currentZplane]);      //pre-definition of strings to filter, add "_" because well strings e.g. A03, L01, C02 can be in file name at other places, e.g ..._A06_T0001F001L01A03Z01C02.tif and ".tif" to excluse well C02 instead of channel C02
-		filterTerms = newArray("include", "include", "include");  //pre-definition of filter types 
-		wellChannelFileList = getFilteredFileList(fileList, false, false);
+            //define new filters and filter file list for currentWell and currentChannel
+            filterStrings = newArray("_" + wellList[currentWell] + "_",channelList[currentChannel] + ".tif",zplaneList[currentZplane]);      //pre-definition of strings to filter, add "_" because well strings e.g. A03, L01, C02 can be in file name at other places, e.g ..._A06_T0001F001L01A03Z01C02.tif and ".tif" to excluse well C02 instead of channel C02
+            filterTerms = newArray("include", "include", "include");  //pre-definition of filter types 
+            wellChannelFileList = getFilteredFileList(fileList, false, false);
 		
-		if(wellChannelFileList.length > montageRow * montageColumn) {
-			print("Error: too may files in file list for well " + wellList[currentWell] + ", channel: " + channelList[currentChannel] + ", z-plane: " + zplaneList[currentZplane]);
-			Array.print(wellChannelFileList);
-			break;
-		}
-		//now open all files (wellChannelFileList) that belong to one wellField in one channel
-		for (currentFile = 0; currentFile < wellChannelFileList.length; currentFile++) {
-			//image sequence & regEx would be possible, but it seems to be slow: run("Image Sequence...", "open=Y:\\correctedimages\\Martin\\150716-wormEmbryo-Gunar-test2x3-lowLaser_20150716_143710\\150716-wormEmbryo-6half-days-old\\ file=(_B03_.*C01) sort");
-			IJ.redirectErrorMessages();
-			if (File.exists(wellChannelFileList[currentFile])) {
-				open(wellChannelFileList[currentFile]);
-				currentImage = getTitle();
-				print("opened (" + (currentFile + 1) + "/" + wellChannelFileList.length + "):", wellChannelFileList[currentFile]);  //to log window
-				} else {
-				print("file not found (" + (currentFile + 1) + "/" + wellChannelFileList.length + "):", wellChannelFileList[currentFile]);  //to log window
-				}
-			showProgress(currentFile / wellChannelFileList.length);
-	       	showStatus("processing" + fileList[currentFile]);
-			} //end for all images per channel	
-		//waitForUser("done");	
-		if (nImages > 1) {
-			run("Images to Stack", "name=Stack title=[] use");
-			run("Make Montage...", "columns=" + montageColumn + " rows=" + montageRow + " scale=1");
-			//run("Z Project...", "start=" + Zstart + " stop=" + Zstop + " montage=[" + montageType + "]");
-			outputFileName = substring(currentImage,0,lengthOf(currentImage)-19) + montageFileTag + substring(currentImage,lengthOf(currentImage)-16,lengthOf(currentImage));
-			saveAs("Tiff", outputPath + outputFileName);
-			close();  // montage
-			print("saved montage as " + outputPath + outputFileName);  //to log window
-			selectWindow("Stack"); //stack
-			close();
-			} else {  //end if images are open
-			run("Close All");
-			}
-		}
-	} //end for all channels in well			
-saveLog(outputPath + "Log_temp_" + tempLogFileNumber + ".txt");
-}  //end for all wells
+            if(wellChannelFileList.length > montageRow * montageColumn) {
+                print("Error: too may files in file list for well " + wellList[currentWell] + ", channel: " + channelList[currentChannel] + ", z-plane: " + zplaneList[currentZplane]);
+                Array.print(wellChannelFileList);
+                break;
+            }
+            //now open all files (wellChannelFileList) that belong to one wellField in one channel
+            for (currentFile = 0; currentFile < wellChannelFileList.length; currentFile++) {
+                //image sequence & regEx would be possible, but it seems to be slow: run("Image Sequence...", "open=Y:\\correctedimages\\Martin\\150716-wormEmbryo-Gunar-test2x3-lowLaser_20150716_143710\\150716-wormEmbryo-6half-days-old\\ file=(_B03_.*C01) sort");
+                IJ.redirectErrorMessages();
+                if (File.exists(wellChannelFileList[currentFile])) {
+                    open(wellChannelFileList[currentFile]);
+                    currentImage = getTitle();
+                    print("opened (" + (currentFile + 1) + "/" + wellChannelFileList.length + "):", wellChannelFileList[currentFile]);  //to log window
+                    } else {
+                    print("file not found (" + (currentFile + 1) + "/" + wellChannelFileList.length + "):", wellChannelFileList[currentFile]);  //to log window
+                    }
+                showProgress(currentFile / wellChannelFileList.length);
+                showStatus("processing" + fileList[currentFile]);
+                } //end for all images per channel	
+            //waitForUser("done");	
+            if (nImages > 1) {
+                run("Images to Stack", "name=Stack title=[] use");
+                run("Make Montage...", "columns=" + montageColumn + " rows=" + montageRow + " scale=1");
+                //run("Z Project...", "start=" + Zstart + " stop=" + Zstop + " montage=[" + montageType + "]");
+                outputFileName = substring(currentImage,0,lengthOf(currentImage)-19) + montageFileTag + substring(currentImage,lengthOf(currentImage)-16,lengthOf(currentImage));
+                saveAs("Tiff", outputPath + outputFileName);
+                close();  // montage
+                print("saved montage as " + outputPath + outputFileName);  //to log window
+                selectWindow("Stack"); //stack
+                close();
+                } else {  //end if images are open
+                run("Close All");
+                }
+            }
+        } //end for all channels in well			
+    saveLog(outputPath + "Log_temp_" + tempLogFileNumber + ".txt");
+    }  //end for all wells
 			
 //print current time to Log window and save log
 getDateAndTime(year, month, dayOfWeek, dayOfMonth, hour, minute, second, msec); month++;
