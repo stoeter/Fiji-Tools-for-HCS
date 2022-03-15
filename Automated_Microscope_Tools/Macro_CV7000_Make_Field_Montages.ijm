@@ -5,8 +5,9 @@ macroDescription = "This macro reads single CV7000 images of a well as .tif ." +
 	"<br>The chosen folder will be searched for images including subfolders." +
 	"<br>All images of a unique well and channel are opened and used for a montage." +
 	"<br>Montage settings (rows, columns) and file tag can be adjusted." +
-	"<br>Montage order of images will be alphanumerical (e.g. field position) and row-wise.";
-macroRelease = "second release 09-01-2022";
+	"<br>Montage order of images will be alphanumerical (e.g. field position) and row-wise." +
+	"<br>There is an option to run a channel-specific background subtraction before/after the montage.";
+macroRelease = "third release 16-03-2022";
 macroAuthor = "by Martin Stöter (stoeter(at)mpi-cbg.de)";
 generalHelpURL = "https://github.com/stoeter/Fiji-Tools-for-HCS/wiki";
 macroHelpURL = generalHelpURL + "/" + macroName;
@@ -36,8 +37,8 @@ Dialog.show;
 //choose folders
 inputPath = getDirectory("Choose image folder... ");
 outputPath = getDirectory("Choose result image folder... or create a folder");
-//inputPath = "G:/Organoid_Screen/2021/210611_automatedSeeding/Yokogawa/001GB210611A-pilot-20x-fixed_20210622_111737/montageTestSet/";
-//outputPath = "G:/Organoid_Screen/2021/210611_automatedSeeding/Yokogawa/001GB210611A-pilot-20x-fixed_20210622_111737/montageResult/";
+//inputPath = "H:\\Anna\\220308_Agg\\yokogawa\\002AD220308a-Agg-T000_20220308_155054\\002AD220308a-Agg-T000\\";
+//outputPath = "H:\\Anna\\220308_Agg\\yokogawa\\FIJI-processing_MS\\test_results\\";
 
 printPaths = "inputPath = \"" + inputPath + "\";\noutputPath = \"" + outputPath + "\";";
 print(printPaths);
@@ -60,6 +61,7 @@ availableMontageFileTags = newArray("000", "all", "put my own tag");
 defaultFilterStrings = newArray("DC_sCMOS #","SC_BP","");
 print("Files containing these strings will be automatically filtered out:");
 Array.print(defaultFilterStrings);
+bkgCorrection = false;
 
 //set array variables
 var fileExtension = ".tif";                                                  //pre-definition of extension
@@ -107,12 +109,14 @@ montageRow = Math.floor(stackSize / 2);
 Dialog.create("Set montage type");
 Dialog.addNumber("Montage columns:", montageColumn);
 Dialog.addNumber("Montage rows:", montageRow);
-Dialog.addChoice("montage file tag:", availableMontageFileTags);
+Dialog.addChoice("Montage file tag:", availableMontageFileTags);
+Dialog.addCheckbox("Background correction?", bkgCorrection);	//if checked background subtration will be done before and after the montage
 Dialog.addCheckbox("Set batch mode (hide images)?", batchMode);	//if checked no images will be displayed
 Dialog.show();
 montageColumn = Dialog.getNumber();
 montageRow = Dialog.getNumber();
 montageFileTag = Dialog.getChoice();
+bkgCorrection = Dialog.getCheckbox();
 batchMode = Dialog.getCheckbox();
 
 if (montageFileTag == "put my own tag") { // user defined file tag
@@ -123,6 +127,28 @@ if (montageFileTag == "put my own tag") { // user defined file tag
 	}
 print("Montage: columns:", montageColumn, ", rows:", montageRow);
 
+// set per default that no background correction is done for all channels
+correctionType = newArray(channelList.length);
+for (currentChannel = 0; currentChannel < channelList.length; currentChannel++) correctionType[currentChannel] = "none";  
+
+if (bkgCorrection) { // set specify background correction
+	Dialog.create("Set background correction");
+	Dialog.addMessage("Choose:\n 'none' for no correction,\n 'dark' for fluorecence channels,\n 'light' for bright field channels.");
+	for (currentChannel = 0; currentChannel < channelList.length; currentChannel++) {
+		defaultSetting = "none";
+		if (channelList[currentChannel] == "C05") defaultSetting = "light";
+		Dialog.addChoice("Background correction for channel: " + channelList[currentChannel], newArray("none", "dark", "light"), defaultSetting);
+		}
+	Dialog.addNumber("Rolling ball radius:", 150);	
+	Dialog.show();
+	for (currentChannel = 0; currentChannel < channelList.length; currentChannel++) {
+		correctionType[currentChannel] = Dialog.getChoice();
+		print("Channel -", channelList[currentChannel], ":", correctionType[currentChannel]);
+		}
+	rollingBallRadius = Dialog.getNumber();	
+	print("Rolling ball radius:", rollingBallRadius);
+	}
+
 print("===== starting processing.... =====");
 setBatchMode(batchMode);
 
@@ -130,6 +156,8 @@ setBatchMode(batchMode);
 for (currentWell = 0; currentWell < wellList.length; currentWell++) {   // well by well
 	print("well (" + (currentWell + 1) + "/" + wellList.length + ") ...");  //to log window
 	for (currentChannel = 0; currentChannel < channelList.length; currentChannel++) {  // channel by channel per well
+		lightBackground = "";   // lightBackground is alwasy "" unless it is bright field, then it is " light"
+		if (correctionType[currentChannel] == "light") lightBackground = " light";
 		for (currentZplane = 0; currentZplane < zplaneList.length; currentZplane++) {  // z-plane by z-plane per channel and well
 
             //define new filters and filter file list for currentWell and currentChannel
@@ -159,8 +187,12 @@ for (currentWell = 0; currentWell < wellList.length; currentWell++) {   // well 
             //waitForUser("done");	
             if (nImages > 1) {
                 run("Images to Stack", "name=Stack title=[] use");
+                if (correctionType[currentChannel] != "none") {  // lightBackground is alwasy "" unless it is bright field, then it is " light"
+                	print("subtracting background with rolling ball = " + rollingBallRadius + " and type " + correctionType[currentChannel] + ":" + lightBackground);
+                	run("Subtract Background...", "rolling=" + rollingBallRadius + lightBackground + " stack");  
+                	}
                 run("Make Montage...", "columns=" + montageColumn + " rows=" + montageRow + " scale=1");
-                //run("Z Project...", "start=" + Zstart + " stop=" + Zstop + " montage=[" + montageType + "]");
+                if (correctionType[currentChannel] != "none") run("Subtract Background...", "rolling=" + rollingBallRadius + lightBackground);
                 outputFileName = substring(currentImage,0,lengthOf(currentImage)-19) + montageFileTag + substring(currentImage,lengthOf(currentImage)-16,lengthOf(currentImage));
                 saveAs("Tiff", outputPath + outputFileName);
                 close();  // montage
