@@ -5,7 +5,7 @@ macroDescription = "This macro reads single CV7000 images of a well as .tif ." +
 	"<br>The chosen folder will be searched for images including subfolders." +
 	"<br>All images of a unique well, field and channel are opened and projected." +
 	"<br>All z-projection methods selectable.";
-macroRelease = "fifth release 06-11-2018";
+macroRelease = "fifth.2 release 06-11-2018/16-03-2022";
 macroAuthor = "by Martin Stöter (stoeter(at)mpi-cbg.de)";
 generalHelpURL = "https://github.com/stoeter/Fiji-Tools-for-HCS/wiki";
 macroHelpURL = generalHelpURL + "/" + macroName;
@@ -121,6 +121,7 @@ if (projectionFileTag == "put my own tag") { // user defined file tag
 	projectionFileTag = Dialog.getString();
 	}
 print("Selected projection type:", projectionType, "starting from plane", Zstart, "until plane",Zstop);
+print("Saving the stack instead of projection (0=false, 1=true):", saveStack, "using file tag", projectionFileTag);
 
 print("===== starting processing.... =====");
 setBatchMode(batchMode);
