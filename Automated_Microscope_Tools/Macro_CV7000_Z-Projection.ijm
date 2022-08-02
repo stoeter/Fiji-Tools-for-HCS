@@ -4,8 +4,8 @@ macroShortDescription = "This macro opens CV7000 images of a well-field-channel 
 macroDescription = "This macro reads single CV7000 images of a well as .tif ." +
 	"<br>The chosen folder will be searched for images including subfolders." +
 	"<br>All images of a unique well, field and channel are opened and projected." +
-	"<br>All z-projection methods selectable.";
-macroRelease = "fifth.2 release 06-11-2018/16-03-2022";
+	"<br>All z-projection methods selectable. Pixel size can be automatically corrected.";
+macroRelease = "sixth release 22-07-2022";
 macroAuthor = "by Martin Stöter (stoeter(at)mpi-cbg.de)";
 generalHelpURL = "https://github.com/stoeter/Fiji-Tools-for-HCS/wiki";
 macroHelpURL = generalHelpURL + "/" + macroName;
@@ -58,6 +58,7 @@ defaultFilterStrings = newArray("DC_sCMOS #","SC_BP","");
 print("Files containing these strings will be automatically filtered out:");
 Array.print(defaultFilterStrings);
 saveStack = false;
+doPixelSizeCorrection = true;
 
 //set array variables
 var fileExtension = ".tif";                                                  //pre-definition of extension
@@ -105,6 +106,7 @@ Dialog.addNumber("Lowest plane:", 1);
 Dialog.addNumber("Highest plane:", stackSize);
 Dialog.addChoice("Projection file tag:", availableProjectionFileTags);
 Dialog.addCheckbox("Save Z-stack instead of projection?", saveStack);	//if checked no projection will be done and image will be saves as stack
+Dialog.addCheckbox("Automatically correct pixel size?", doPixelSizeCorrection);	//if checked .mrf file will be read and pixel size will be corrected
 Dialog.addCheckbox("Set batch mode (hide images)?", batchMode);	//if checked no images will be displayed
 Dialog.show();
 projectionType = Dialog.getChoice();
@@ -112,6 +114,7 @@ Zstart = Dialog.getNumber();
 Zstop = Dialog.getNumber();
 projectionFileTag = Dialog.getChoice();
 saveStack = Dialog.getCheckbox();
+doPixelSizeCorrection = Dialog.getCheckbox();
 batchMode = Dialog.getCheckbox();
 
 if (projectionFileTag == "put my own tag") { // user defined file tag
@@ -122,6 +125,8 @@ if (projectionFileTag == "put my own tag") { // user defined file tag
 	}
 print("Selected projection type:", projectionType, "starting from plane", Zstart, "until plane",Zstop);
 print("Saving the stack instead of projection (0=false, 1=true):", saveStack, "using file tag", projectionFileTag);
+
+if (doPixelSizeCorrection) pixelSizeMrf = readMRFfile(inputPath);  // get pixel size from .mrf file
 
 print("===== starting processing.... =====");
 setBatchMode(batchMode);
@@ -142,6 +147,7 @@ print("well-field (" + (currentWellField + 1) + "/" + wellFieldList.length + ") 
 				open(wellChannelFileList[currentFile]);
 				currentImage = getTitle();
 				print("opened (" + (currentFile + 1) + "/" + wellChannelFileList.length + "):", wellChannelFileList[currentFile]);  //to log window
+				if (doPixelSizeCorrection) correctPixelSize(pixelSizeMrf);   // do pixel size / unit correction
 				} else {
 				print("file not found (" + (currentFile + 1) + "/" + wellChannelFileList.length + "):", wellChannelFileList[currentFile]);  //to log window
 				}
@@ -425,6 +431,63 @@ numberString = "000000000000" + toString(number, decimalPlaces);  //convert to n
 numberString = substring(numberString, lengthOf(numberString) - lengthNumberString, lengthOf(numberString)); //shorten string to lengthNumberString
 return numberString;
 }
+
+
+//function detemins the current pixel size and unit of an image and corrects it this the given parameter
+// if pixel size paramweter is <= 0 no correction of pixel size will be done
+//example: correctPixelSize(pixelSizeMrf)
+function correctPixelSize(pixelSizeMrf) { 
+if (pixelSizeMrf <= 0) return;
+getPixelSize(pixelUnit, pixelWidth, pixelHeight);
+if (pixelUnit == "inches") {  // default, but wrong in CV7000 images
+	print("Pixel units:", pixelUnit, "; pixel size and unit will be corrected.");
+	Stack.setXUnit("um");
+	Stack.setYUnit("um");
+	run("Properties...", "channels=1 slices=1 frames=1 pixel_width=" + pixelSizeMrf + " pixel_height=" + pixelSizeMrf + " voxel_depth=1");
+	} else {
+	print("Pixel size was already adapted. No correction will be done. Pixel units and sizes are:", pixelUnit, pixelWidth, pixelHeight);	
+	}
+}
+
+//function reads the CV7000 .mrf file and detemins the pixel size
+//example: pixelSizeMrf = readMRFfile(inputPath)
+function readMRFfile(inputPath) { 
+mrfFilePath = inputPath + "MeasurementDetail.mrf";
+pixelSizeMrf = 0;  // by default initialize value that is given back by this function
+doPixelSizeCorrection = true;  // function variable that checks it pixel sizes are unique in .mrf, otherwise funtion will return -1 
+// open .mrf file and split into line array  
+if (!File.exists(mrfFilePath)) {
+	print("Could not find .mrf file:", mrfFilePath, "\nPixel size could not be determined and is not automatically corrected!");
+	} else {
+	mrfFile = File.openAsString(mrfFilePath);
+	lines = split(mrfFile,"\n");
+	print("Reading .mrf file... length:", mrfFile.length, "; lines:", lines.length);
+	// go through each line and fine dimension for each channel
+	for (line = 0; line < lines.length; line++) {
+    	if (matches(lines[line], "(.*Dimension.*)") ) {
+    		splitLines = split(lines[line], "\"");
+    		channelMrf = splitLines[1];
+	    	if (pixelSizeMrf == 0) {     // on first iteration
+ 		   		pixelSizeMrf = splitLines[3];
+    			} else {
+    			if (pixelSizeMrf != splitLines[3] && doPixelSizeCorrection) {     // if multiple pixel sizes or no correction 
+    				print("Multiple pixel sizes in .mrf file. No correction of pixel sizes will be applied, because this could lead to mistakes...");
+    				doPixelSizeCorrection = false;
+    				pixelSizeMrf = splitLines[3];
+    				} else {                                                 // if all is normal
+    				pixelSizeMrf = splitLines[3];
+    				}
+    			}
+    		print("Channel", channelMrf, "has pixel size of", pixelSizeMrf, "um/px");
+    		}  // line matches
+		}  // for each line
+	if (doPixelSizeCorrection == false) {
+		return -1;  // if multiple pixel sizes in .mrf, then return -1 as pixel size
+		} else {
+		return pixelSizeMrf;	
+		}
+	}  // if exists
+}  // function
 ////////////////////////////////////////   E N D    O F    M A C R O   ////////////////////////////
 
 
