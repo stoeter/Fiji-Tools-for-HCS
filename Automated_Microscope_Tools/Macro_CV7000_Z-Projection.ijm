@@ -4,8 +4,9 @@ macroShortDescription = "This macro opens CV7000 images of a well-field-channel 
 macroDescription = "This macro reads single CV7000 images of a well as .tif ." +
 	"<br>The chosen folder will be searched for images including subfolders." +
 	"<br>All images of a unique well, field and channel are opened and projected." +
-	"<br>All z-projection methods selectable. Pixel size can be automatically corrected.";
-macroRelease = "sixth release 22-07-2022";
+	"<br>All z-projection methods selectable. Pixel size can be automatically corrected."
+	"<br>Instead of projection stack can be saved (can handle stacks larger than 100 (e.g. Z100)).";
+macroRelease = "seventh release 30-08-2022";
 macroAuthor = "by Martin Stöter (stoeter(at)mpi-cbg.de)";
 generalHelpURL = "https://github.com/stoeter/Fiji-Tools-for-HCS/wiki";
 macroHelpURL = generalHelpURL + "/" + macroName;
@@ -130,6 +131,7 @@ if (doPixelSizeCorrection) pixelSizeMrf = readMRFfile(inputPath);  // get pixel 
 
 print("===== starting processing.... =====");
 setBatchMode(batchMode);
+var zPlaneDigitProblem = 0;  // this will be only used and set to 1 if stack is saved and number of z planes are > 99, thereby 3-digits => e.g. Z100
 
 //go through all files
 for (currentWellField = 0; currentWellField < wellFieldList.length; currentWellField++) {   // well by well
@@ -139,6 +141,8 @@ print("well-field (" + (currentWellField + 1) + "/" + wellFieldList.length + ") 
 		filterStrings = newArray(wellFieldList[currentWellField],channelList[currentChannel] + ".tif","");      //pre-definition of strings to filter, add "_" because well strings e.g. A03, L01, C02 can be in file name at other places, e.g ..._A06_T0001F001L01A03Z01C02.tif and ".tif" to excluse well C02 instead of channel C02
 		filterTerms = newArray("include", "include", "no filtering");  //pre-definition of filter types 
 		wellChannelFileList = getFilteredFileList(fileList, false, false);
+		if (saveStack) wellChannelFileList = correctCV7000zPlaneDigitProblem(wellChannelFileList);
+		
 		//now open all files (wellChannelFileList) that belong to one wellField in one channel
 		for (currentFile = 0; currentFile < wellChannelFileList.length; currentFile++) {
 			//image sequence & regEx would be possible, but it seems to be slow: run("Image Sequence...", "open=Y:\\correctedimages\\Martin\\150716-wormEmbryo-Gunar-test2x3-lowLaser_20150716_143710\\150716-wormEmbryo-6half-days-old\\ file=(_B03_.*C01) sort");
@@ -159,6 +163,7 @@ print("well-field (" + (currentWellField + 1) + "/" + wellFieldList.length + ") 
 			run("Images to Stack", "name=Stack title=[] use");
 			if (!saveStack) run("Z Project...", "start=" + Zstart + " stop=" + Zstop + " projection=[" + projectionType + "]");
 			outputFileName = substring(currentImage,0,lengthOf(currentImage)-9) + projectionFileTag + substring(currentImage,lengthOf(currentImage)-7,lengthOf(currentImage));
+			if (saveStack && zPlaneDigitProblem) outputFileName = substring(currentImage,0,lengthOf(currentImage)-10) + projectionFileTag + substring(currentImage,lengthOf(currentImage)-7,lengthOf(currentImage)); // here file name is 3 digit  (e.g. Z234)
 			saveAs("Tiff", outputPath + outputFileName);
 			close();  //Z projection
 			if (!saveStack) {
@@ -488,6 +493,41 @@ if (!File.exists(mrfFilePath)) {
 		}
 	}  // if exists
 }  // function
+
+//function checks if CV7000 has 3 digits (Z01-Z99) or also 3 digits (from Z100...) in file name
+//example: wellChannelFileList = correctCV7000zPlaneDigitProblem(wellChannelFileList);
+function correctCV7000zPlaneDigitProblem(wellChannelFileListFunction) { 
+	// Array.show("wellChannelFileList", wellChannelFileList);
+	// make new array and store lenght of file names
+	wellChannelFileNamelength = newArray(wellChannelFileListFunction.length);
+	for (i = 0; i < wellChannelFileListFunction.length; i++) {
+		wellChannelFileNamelength[i] = lengthOf(wellChannelFileListFunction[i]);
+		}
+	// Array.show("wellChannelFileNamelength", wellChannelFileNamelength);	
+	Array.getStatistics(wellChannelFileNamelength, min, max, mean, stdDev);
+	// if length min vs max differes in 1, then there are 2 and 3 digit file names. Now put 2 digit in one array and 3 digit file names in a second array
+	if (max == min + 1) {
+		print("found 2- and 3-digit format in CV7000 file names. File names will be sorted correctly. Length (min, max):" , min , max);
+		zPlaneDigitProblem = 1;
+		wellChannelFileListTwoDigits = newArray(0);
+		wellChannelFileListThreeDigits = newArray(0);
+		for (i = 0; i < wellChannelFileListFunction.length; i++) {
+			if (wellChannelFileNamelength[i] ==  min) {
+				wellChannelFileListTwoDigits[wellChannelFileListTwoDigits.length] = wellChannelFileListFunction[i];
+				} else {
+				wellChannelFileListThreeDigits[wellChannelFileListThreeDigits.length] = wellChannelFileListFunction[i];
+				}
+			}
+		// finally concatenate both arrays to optain Z01-Z99, and Z100 to ... NEEDS to be extended to 4 digits at soma point...	
+		wellChannelFileListFunction = Array.concat(wellChannelFileListTwoDigits, wellChannelFileListThreeDigits);
+		//Array.show("wellChannelFileNamelength NEW", wellChannelFileList);			
+		}
+	if (max > min + 1) {
+		print("found 2- and more-digit formats in CV7000 file names. File names will not be sorted correctly. Length (min, max):" , min , max);	
+		waitForUser(title,"Found 2- and more-digit formats in CV7000 file names. File names will not be sorted correctly!");
+		}
+	return wellChannelFileListFunction;
+}  // function		
 ////////////////////////////////////////   E N D    O F    M A C R O   ////////////////////////////
 
 
