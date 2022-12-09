@@ -4,9 +4,10 @@ macroShortDescription = "This macro opens CV7000 images of a well-field-channel 
 macroDescription = "This macro reads single CV7000 images of a well as .tif ." +
 	"<br>The chosen folder will be searched for images including subfolders." +
 	"<br>All images of a unique well, field and channel are opened and projected." +
-	"<br>All z-projection methods selectable. Pixel size can be automatically corrected."
-	"<br>Instead of projection stack can be saved (can handle stacks larger than 100 (e.g. Z100)).";
-macroRelease = "seventh release 30-08-2022";
+	"<br>All z-projection methods selectable. Pixel size can be automatically corrected." +
+	"<br>Projection and / or image stack files (to subfolder 'stack') can be saved (can handle stacks larger than 100 (e.g. Z100))." +
+	"<br>Option to copy CV7000 meta data files to output folder.";
+macroRelease = "eighth release 06-12-2022";
 macroAuthor = "by Martin Stöter (stoeter(at)mpi-cbg.de)";
 generalHelpURL = "https://github.com/stoeter/Fiji-Tools-for-HCS/wiki";
 macroHelpURL = generalHelpURL + "/" + macroName;
@@ -55,11 +56,14 @@ run("Close All");
 batchMode = true;
 availableProjectionTerms = newArray("Max Intensity", "Sum Slices", "Average Intensity", "Min Intensity", "Standard Deviation", "Median");
 availableProjectionFileTags = newArray("00", "all", "max", "min", "avg", "put my own tag");
-defaultFilterStrings = newArray("DC_sCMOS #","SC_BP","");
+var defaultFilterStrings = newArray("DC_sCMOS #","SC_BP","");
 print("Files containing these strings will be automatically filtered out:");
 Array.print(defaultFilterStrings);
+saveProjection = true;
 saveStack = false;
 doPixelSizeCorrection = true;
+copyCV7000metadataFiles = false;
+var zPlaneDigitProblem = 0;  // this will be only used and set to 1 if stack is saved and number of z planes are > 99, thereby 3-digits => e.g. Z100
 
 //set array variables
 var fileExtension = ".tif";                                                  //pre-definition of extension
@@ -69,10 +73,12 @@ var filterTerms = newArray("no filtering", "no filtering", "no filtering");  //p
 var displayFileList = false;                                                 //shall array window be shown? 
 setDialogImageFileFilter();
 
+var CV7000metadataFileList = newArray(0);                                     //initialize - list of files (metadata forom CV7000) that will be copied to outoutPath
+
 print("Image file filter:", filterTerms[0],filterStrings[0] + ";",filterTerms[1],filterStrings[1] + ";",filterTerms[2],filterStrings[2]);
 
 displayMetaData = false;
-Dialog.create("Find meta data");
+Dialog.create("Find meta data of file names");
 Dialog.addCheckbox("Display unique values of meta data:", displayMetaData);	
 Dialog.show();
 displayMetaData = Dialog.getCheckbox();
@@ -81,15 +87,17 @@ print("Processing file list...");
 
 //get file list ALL
 fileList = getFileListSubfolder(inputPath, displayFileList);  //read all files in subfolders
-fileList = getFileType(fileList, fileExtension, displayFileList);
+//fileList = getFileType(fileList, fileExtension, displayFileList);
+fileList = getFileTypeAndCV7000metaDataFiles(fileList, fileExtension, displayFileList);   // new funtion to store the CV7000 meta data files in separate list (CV7000metadataFileList)
 fileList = getFilteredFileList(fileList, false, displayFileList);    //filter for strings
 if (fileList.length == 0) exit("No files to process");  
 
-filterStrings = newArray("DC_sCMOS #","SC_BP","");
-filterTerms = newArray("exclude", "exclude", "no filtering"); 
+// these steps below are not neccessary anymore because this filtering is done in the getFileTypeAndCV7000metaDataFiles (filters out the CV7000 meta data files that are .tif)
+//filterStrings = newArray("DC_sCMOS #","SC_BP","");
+//filterTerms = newArray("exclude", "exclude", "no filtering"); 
 print("removing correction files from file list containing text", filterStrings[0], filterStrings[1], filterStrings[2]);
-fileList = getFilteredFileList(fileList, false, false);
-if (fileList.length == 0) exit("No files to process");  
+//fileList = getFilteredFileList(fileList, false, false);
+//if (fileList.length == 0) exit("No files to process");  
 
 wellList = getUniqueWellListCV7000(fileList, displayMetaData);
 wellFieldList = getUniqueWellFieldListCV7000(fileList, displayMetaData);
@@ -106,17 +114,26 @@ Dialog.addChoice("Projection:", availableProjectionTerms);	//set number of image
 Dialog.addNumber("Lowest plane:", 1);
 Dialog.addNumber("Highest plane:", stackSize);
 Dialog.addChoice("Projection file tag:", availableProjectionFileTags);
-Dialog.addCheckbox("Save Z-stack instead of projection?", saveStack);	//if checked no projection will be done and image will be saves as stack
+Dialog.addCheckbox("Save Z-projection?", saveProjection);	// if checked images will be saved as projection
+Dialog.addCheckbox("Save Z-stack in subfolder?", saveStack);	// if checked images will be saved as stack
 Dialog.addCheckbox("Automatically correct pixel size?", doPixelSizeCorrection);	//if checked .mrf file will be read and pixel size will be corrected
+Dialog.addCheckbox("Copy CV7000 meta data files?", copyCV7000metadataFiles);	//if checked meta date file from CV7000, such as .mrf, .mes, correction files etc., will be copied to output path
 Dialog.addCheckbox("Set batch mode (hide images)?", batchMode);	//if checked no images will be displayed
 Dialog.show();
 projectionType = Dialog.getChoice();
 Zstart = Dialog.getNumber();
 Zstop = Dialog.getNumber();
 projectionFileTag = Dialog.getChoice();
+saveProjection = Dialog.getCheckbox();
 saveStack = Dialog.getCheckbox();
 doPixelSizeCorrection = Dialog.getCheckbox();
+copyCV7000metadataFiles = Dialog.getCheckbox();
 batchMode = Dialog.getCheckbox();
+
+if (saveStack) {
+	File.makeDirectory(outputPath + "stack");
+	print("made folder for saving stack files " + outputPath + "stack" + File.separator);  //to log window
+	}				
 
 if (projectionFileTag == "put my own tag") { // user defined file tag
 	Dialog.create("Set projection tag");
@@ -125,13 +142,13 @@ if (projectionFileTag == "put my own tag") { // user defined file tag
 	projectionFileTag = Dialog.getString();
 	}
 print("Selected projection type:", projectionType, "starting from plane", Zstart, "until plane",Zstop);
-print("Saving the stack instead of projection (0=false, 1=true):", saveStack, "using file tag", projectionFileTag);
+print("Saving the Z-projection (0=false, 1=true):", saveProjection, "saving the stack:", saveStack, "copy CV700 meta data files:",copyCV7000metadataFiles, "using file tag", projectionFileTag);
 
 if (doPixelSizeCorrection) pixelSizeMrf = readMRFfile(inputPath);  // get pixel size from .mrf file
 
 print("===== starting processing.... =====");
 setBatchMode(batchMode);
-var zPlaneDigitProblem = 0;  // this will be only used and set to 1 if stack is saved and number of z planes are > 99, thereby 3-digits => e.g. Z100
+if (copyCV7000metadataFiles) copyFiles(CV7000metadataFileList, outputPath);
 
 //go through all files
 for (currentWellField = 0; currentWellField < wellFieldList.length; currentWellField++) {   // well by well
@@ -161,17 +178,18 @@ print("well-field (" + (currentWellField + 1) + "/" + wellFieldList.length + ") 
 		//waitForUser("done");	
 		if (nImages > 1) {
 			run("Images to Stack", "name=Stack title=[] use");
-			if (!saveStack) run("Z Project...", "start=" + Zstart + " stop=" + Zstop + " projection=[" + projectionType + "]");
-			outputFileName = substring(currentImage,0,lengthOf(currentImage)-9) + projectionFileTag + substring(currentImage,lengthOf(currentImage)-7,lengthOf(currentImage));
-			if (saveStack && zPlaneDigitProblem) outputFileName = substring(currentImage,0,lengthOf(currentImage)-10) + projectionFileTag + substring(currentImage,lengthOf(currentImage)-7,lengthOf(currentImage)); // here file name is 3 digit  (e.g. Z234)
-			saveAs("Tiff", outputPath + outputFileName);
-			close();  //Z projection
-			if (!saveStack) {
-				print("saved projection as " + outputPath + outputFileName);  //to log window
+			outputFileName = substring(currentImage, 0, lengthOf(currentImage) - 9 + zPlaneDigitProblem) + projectionFileTag + substring(currentImage, lengthOf(currentImage) - 7, lengthOf(currentImage));   // this should handle the 2-digit and 3-digit file names
+			//outputFileName = substring(currentImage, 0, lengthOf(currentImage) - 10                    ) + projectionFileTag + substring(currentImage, lengthOf(currentImage) - 7,lengthOf(currentImage)); // here file name is 3 digit  (e.g. Z234)
+			if (saveProjection) {
+				run("Z Project...", "start=" + Zstart + " stop=" + Zstop + " projection=[" + projectionType + "]");
+				saveAs("Tiff", outputPath + outputFileName);
+				print("saved projection as " + outputPath + outputFileName);  //to log window	
+				close();  //Z projection
+				}			
+			if (saveStack) {
 				selectWindow("Stack"); //stack
-				close();
-				} else {
-				print("saved image stack as " + outputPath + outputFileName);  //to log window	
+				saveAs("Tiff", outputPath + "stack" + File.separator + outputFileName);
+				print("saved image stack as " + outputPath + "stack" + File.separator + outputFileName);  //to log window
 				}
 			} else {  //end if images are open
 			run("Close All");
@@ -280,14 +298,51 @@ function getFileType(fileListFunction, fileExtension, displayList) {
 returnedFileList = newArray(0);     //this list stores all files found to have the extension and is returned at the end of the function
 if(lengthOf(fileExtension) > 0) {
 	for (i = 0; i < fileListFunction.length; i++) {
-		if (endsWith(fileListFunction[i],fileExtension)) returnedFileList = Array.concat(returnedFileList,fileListFunction[i]);
-		}
+		if (endsWith(fileListFunction[i], fileExtension)) returnedFileList = Array.concat(returnedFileList, fileListFunction[i]);
 	print(returnedFileList.length + " file(s) found with extension " + fileExtension + ".");
 	if (displayList) {Array.show("All files - filtered for " + fileExtension, returnedFileList);} 
 	} else {
 	returnedFileList = fileListFunction;	
 	}
 return returnedFileList;
+}
+
+//function filters all files with certain extension
+//example: myFileList = getFileTypeAndCV7000metaDataFiles(myFileList, ".tif", true);
+function getFileTypeAndCV7000metaDataFiles(fileListFunction, fileExtension, displayList) {
+returnedFileList = newArray(0);     //this list stores all files found to have the extension and is returned at the end of the function
+defaultCV7000metadataFileExtensionList = newArray(".icr", ".mes", ".mlf", ".mrf", ".wpi", ".wpp", ".xlm");
+if(lengthOf(fileExtension) > 0) {
+	for (i = 0; i < fileListFunction.length; i++) {
+		if (endsWith(fileListFunction[i], fileExtension)) {                    // if this is e.g. .tif
+			if (indexOf(fileListFunction[i], defaultFilterStrings[0]) > 0 ||   // is "DC_sCMOS #"
+				indexOf(fileListFunction[i], defaultFilterStrings[1]) > 0) {   // is "SC_BP"
+				CV7000metadataFileList = Array.concat(CV7000metadataFileList, fileListFunction[i]);	
+				print("Added " + fileListFunction[i] + " to CV7000 meta data file list");
+				} else {
+				returnedFileList = Array.concat(returnedFileList, fileListFunction[i]);
+				}
+			} else {                                                             // if this file has other file extension
+				if (endsWith(fileListFunction[i], defaultCV7000metadataFileExtensionList[0]) ||
+					endsWith(fileListFunction[i], defaultCV7000metadataFileExtensionList[1]) ||
+					endsWith(fileListFunction[i], defaultCV7000metadataFileExtensionList[2]) ||
+					endsWith(fileListFunction[i], defaultCV7000metadataFileExtensionList[3]) ||
+					endsWith(fileListFunction[i], defaultCV7000metadataFileExtensionList[4]) ||
+					endsWith(fileListFunction[i], defaultCV7000metadataFileExtensionList[5]) ||
+					endsWith(fileListFunction[i], defaultCV7000metadataFileExtensionList[6]) 
+					//endsWith(fileListFunction[i], defaultCV7000metadataFileExtensionList[7]) //  see definition of array defaultCV7000metadataFileExtensionList in the beginning
+					) {
+					CV7000metadataFileList = Array.concat(CV7000metadataFileList, fileListFunction[i]);
+					print("Added " + fileListFunction[i] + " to CV7000 meta data file list");
+				}
+			}
+		}
+		print(returnedFileList.length + " file(s) found with extension " + fileExtension + ".");
+		if (displayList) {Array.show("All files - filtered for " + fileExtension, returnedFileList);Array.show("CV7000 meta data files", CV7000metadataFileList);} 
+		} else {
+		returnedFileList = fileListFunction;	
+		}
+return returnedFileList;   // note: metadataFileList is globel variable (var) and does not need to be returned
 }
 
 //function filters a list for a certain string (filter)
@@ -527,6 +582,18 @@ function correctCV7000zPlaneDigitProblem(wellChannelFileListFunction) {
 		waitForUser(title,"Found 2- and more-digit formats in CV7000 file names. File names will not be sorted correctly!");
 		}
 	return wellChannelFileListFunction;
+}  // function		
+
+
+//function copies files (the metadata files from CV7000) to destination folder
+//example: copyFiles(metadataFileList, outputPath);
+function copyFiles(listOfFilePaths, outputPath) {
+// go through the list of file path, get file name and copy to destination folder 
+for (i = 0; i < listOfFilePaths.length; i++) {
+	currentFile = substring(listOfFilePaths[i], lastIndexOf(listOfFilePaths[i], File.separator) + 1);
+	File.copy(listOfFilePaths[i], outputPath + currentFile);
+	print("copied:", currentFile);	
+	}  //end for
 }  // function		
 ////////////////////////////////////////   E N D    O F    M A C R O   ////////////////////////////
 
