@@ -194,7 +194,11 @@ print("well-field (" + (currentWellField + 1) + "/" + wellFieldList.length + ") 
 			} else {  //end if images are open
 			run("Close All");
 			}
-		} //end for all channels in well			
+		} //end for all channels in well
+	// clear memory
+	print("current memory:", parseInt(IJ.currentMemory())/(1024*1024*1024), "GB");
+	run("Collect Garbage");
+	print("memory after clearing:", parseInt(IJ.currentMemory())/(1024*1024*1024), "GB");
 	saveLog(outputPath + "Log_temp_" + tempLogFileNumber + ".txt");
 	}  //end for all wells
 			
@@ -311,7 +315,7 @@ return returnedFileList;
 //example: myFileList = getFileTypeAndCV7000metaDataFiles(myFileList, ".tif", true);
 function getFileTypeAndCV7000metaDataFiles(fileListFunction, fileExtension, displayList) {
 returnedFileList = newArray(0);     //this list stores all files found to have the extension and is returned at the end of the function
-defaultCV7000metadataFileExtensionList = newArray(".icr", ".mes", ".mlf", ".mrf", ".wpi", ".wpp", ".xlm");
+defaultCV7000metadataFileExtensionList = newArray(".icr", ".mes", ".mlf", ".mrf", ".wpi", ".wpp", ".xml");
 if(lengthOf(fileExtension) > 0) {
 	for (i = 0; i < fileListFunction.length; i++) {
 		if (endsWith(fileListFunction[i], fileExtension)) {                    // if this is e.g. .tif
@@ -338,6 +342,7 @@ if(lengthOf(fileExtension) > 0) {
 			}
 		}
 		print(returnedFileList.length + " file(s) found with extension " + fileExtension + ".");
+		print(CV7000metadataFileList + " file(s) of CV7000 meta data found");
 		if (displayList) {Array.show("All files - filtered for " + fileExtension, returnedFileList);Array.show("CV7000 meta data files", CV7000metadataFileList);} 
 		} else {
 		returnedFileList = fileListFunction;	
