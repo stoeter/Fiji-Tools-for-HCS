@@ -4,7 +4,7 @@ macroShortDescription = "This macro opens CV7000 images of a well-field-channel 
 macroDescription = "This macro reads single CV7000 images of a well as .tif ." +
 	"<br>The chosen folder will be searched for images including subfolders." +
 	"<br>All images of a unique well, field and channel are opened and projected." +
-	"<br>All z-projection methods selectable. Pixel size can be automatically corrected." +
+	"<br>All z-projection methods selectable. Pixel size can be automatically corrected." +
 	"<br>Projection and / or image stack files (to subfolder 'stack') can be saved (can handle stacks larger than 100 (e.g. Z100))." +
 	"<br>Option to copy CV7000 meta data files to output folder.";
 macroRelease = "eighth release 06-12-2022";
@@ -178,7 +178,7 @@ print("well-field (" + (currentWellField + 1) + "/" + wellFieldList.length + ") 
 		//waitForUser("done");	
 		if (nImages > 1) {
 			run("Images to Stack", "name=Stack title=[] use");
-			outputFileName = substring(currentImage, 0, lengthOf(currentImage) - 9 + zPlaneDigitProblem) + projectionFileTag + substring(currentImage, lengthOf(currentImage) - 7, lengthOf(currentImage));   // this should handle the 2-digit and 3-digit file names
+			outputFileName = substring(currentImage, 0, lengthOf(currentImage) - 9 - zPlaneDigitProblem) + projectionFileTag + substring(currentImage, lengthOf(currentImage) - 7, lengthOf(currentImage));   // this should handle the 2-digit and 3-digit file names
 			//outputFileName = substring(currentImage, 0, lengthOf(currentImage) - 10                    ) + projectionFileTag + substring(currentImage, lengthOf(currentImage) - 7,lengthOf(currentImage)); // here file name is 3 digit  (e.g. Z234)
 			if (saveProjection) {
 				run("Z Project...", "start=" + Zstart + " stop=" + Zstop + " projection=[" + projectionType + "]");
@@ -191,9 +191,8 @@ print("well-field (" + (currentWellField + 1) + "/" + wellFieldList.length + ") 
 				saveAs("Tiff", outputPath + "stack" + File.separator + outputFileName);
 				print("saved image stack as " + outputPath + "stack" + File.separator + outputFileName);  //to log window
 				}
-			} else {  //end if images are open
-			run("Close All");
-			}
+			}  //end if images are open
+		run("Close All");	
 		} //end for all channels in well
 	// clear memory
 	print("current memory:", parseInt(IJ.currentMemory())/(1024*1024*1024), "GB");
@@ -342,7 +341,7 @@ if(lengthOf(fileExtension) > 0) {
 			}
 		}
 		print(returnedFileList.length + " file(s) found with extension " + fileExtension + ".");
-		print(CV7000metadataFileList + " file(s) of CV7000 meta data found");
+		print(CV7000metadataFileList.length + " file(s) of CV7000 meta data found");
 		if (displayList) {Array.show("All files - filtered for " + fileExtension, returnedFileList);Array.show("CV7000 meta data files", CV7000metadataFileList);} 
 		} else {
 		returnedFileList = fileListFunction;	
@@ -601,7 +600,6 @@ for (i = 0; i < listOfFilePaths.length; i++) {
 	}  //end for
 }  // function		
 ////////////////////////////////////////   E N D    O F    M A C R O   ////////////////////////////
-
 
 
 
