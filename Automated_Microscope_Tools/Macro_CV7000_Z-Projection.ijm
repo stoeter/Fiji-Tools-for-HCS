@@ -522,6 +522,7 @@ doPixelSizeCorrection = true;  // function variable that checks it pixel sizes a
 // open .mrf file and split into line array  
 if (!File.exists(mrfFilePath)) {
 	print("Could not find .mrf file:", mrfFilePath, "\nPixel size could not be determined and is not automatically corrected!");
+    return -1;
 	} else {
 	mrfFile = File.openAsString(mrfFilePath);
 	lines = split(mrfFile,"\n");
