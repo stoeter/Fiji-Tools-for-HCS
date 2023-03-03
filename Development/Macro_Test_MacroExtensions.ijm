@@ -42,7 +42,7 @@ regexPattern = "(.*)_([A-P][0-9]{2})_(T[0-9]{4})(F[0-9]{3})(L[0-9]{2})(A[0-9]{2}
 regexPattern = "(?<barcode>.*)_(?<well>[A-P][0-9]{2})_(?<timePoint>T[0-9]{4})(?<field>F[0-9]{3})(?<timeLine>L[0-9]{2})(?<action>A[0-9]{2})(?<plane>Z[0-9]{2})(?<channel>C[0-9]{2}).tif$";
 Ext.getRegexMatchesFromArray(stringArrayForQuery, regexPattern, myRegexResults);
 // third parameter (myRegexResults) is an optional directory. Using optional path to list files and array (first parameter) will be ignored!");
-print("result string  contains all sets of unique regex matches separated by a <tab>-sign (\\t) (this sign is invisible in Log window!) and all sets of regex groups separated by double-pipe (||)...\n", myRegexResults);
+print("result string contains all sets of unique regex matches separated by a <tab>-sign (\\t) (this sign is invisible in Log window!) and all sets of regex groups separated by double-pipe (||)...\n", myRegexResults);
 
 print("\nsets of regex groups can be split into an array using the (||) and the split() command from IJ-macro language...");	
 myRegexGroupArray = split(myRegexResults, "||");
@@ -68,11 +68,12 @@ myRegexPluginNameArray = split(myRegexGroupArray[1], "\t");
 print("\nOPTION: use resultstring (=3 parameter) as existing path, apply regex and open all images... see also HCS-Tools macro 'Import_Image_Sequence_Recursive' ");
 // getRegexMatchesFromArray for regex on file lists 
 // 1) define your path and pass it onto the result variable (if result variable is an existing path, then all file names will be read and the regular expression is applied on them...)
-optionalPath = getDirectory("plugins");
+optionalPath = getDirectory("imagej") + "images";
+print(optionalPath);
 //optionalPath = getDirectory("macros");  // enable this to mimic that no files were found
 myRegexResults = optionalPath;
 // 2) define your regex
-regexPattern = "(?<paths>.*Olympus.*00[0-9].png$)";
+regexPattern = "(?<paths>.*.png$)";
 // 3) define you regex query => here empty because the regex will be applied on the files found in given path
 stringArrayForQuery = newArray(0);
 // 4) launch the regex query
@@ -84,16 +85,21 @@ if(myRegexGroupArray.length < 2) {
 	print("no images found");
 	waitForUser("No images found!");
 	} else {
-// 6) save the list of paths in a FIJI temp folder (tab separated elements need to be separated by line breaks)
+// 6) first group is regex query names (here just "paths"), second group (=[1]) is array of paths, make absolute paths
+	pathArray = split(myRegexGroupArray[1], "\t");
+	for (i = 0; i < pathArray.length; i++) {
+		pathArray[i] = optionalPath + File.separator + pathArray[i];
+		}
+	Array.show(pathArray);
+	pathArrayForStackListFile = String.join(pathArray, "\n");
+// 7) save the list of paths in a FIJI temp folder (tab separated elements need to be separated by line breaks)		
 	tempFile = getDirectory("temp") + "listOfPaths.txt";
 	print("saved list of paths temporarily here:", tempFile);
-	File.saveString(replace(myRegexGroupArray[1], "\t", "\n"), tempFile);
-// 7) first group is regex query names (here just "paths"), second group (=[1]) is array of paths
-	pathArray = split(myRegexGroupArray[1], "\t");
-	Array.show(pathArray);
+	File.saveString(pathArrayForStackListFile, tempFile);
+// 7) open file list generated from regular expression	
 	run("Stack From List...", "open=" + tempFile);
 	}
-
+/*
 print("\n=== getFileListSubfolder ===");
 myFileListFromSubfolders = "display";
 Ext.getFileListSubfolder(optionalPath, myFileListFromSubfolders);  // optional path is directory of plugins and strings "display", "1" or true (boolean) enable showing array in a window
@@ -127,17 +133,18 @@ resultStringArray = false;                                                      
 //filterSettings = Array.concat(filterStrings, availableFilterTerms, filterTerms);     //the filter settings are 3 arrays and must be concatenated to a single array and then uses a 2nd parameter  
 //Ext.getFilteredListMultiple(myFileListFromSubfolders, Array.concat(filterStrings, availableFilterTerms, filterTerms), resultStringArray, "display");    // strings "display", "1" or true (boolean) enable showing array in a window
 Ext.getFilteredListMultiple(myFileListFromSubfolders, filtersettings, resultStringArray, displayFileList);  
-
+*/
 print("\n=== getFilteredList ===");
 stringArrayForQuery = newArray("171020-dyes-10x_G03_T0001F005Z01C01.tif","171020-dyes-10x_G04_T0001F004L01A01Z01C02.jpg","171020-dyes-10x_H05_T0001F003L01A01Z01C04.tif"); 
 Array.print(stringArrayForQuery);
-Ext.getFilteredList(stringArrayForQuery, ".tif", resultStringArray, true);    // strings "display", "1" or true (boolean) enable showing array in a window
+resultStringArray = "";
+Ext.getFilteredList(stringArrayForQuery, ".tif", true, resultStringArray);    // strings "display", "1" or true (boolean) enable showing array in a window
 //resultStringArray = split(resultStringArray, "\t");
 print("after filtering for :", ".tif");
 print(resultStringArray);
 filteredList = split(resultStringArray, "\t");
 Array.print(filteredList);
-Ext.getFilteredList(stringArrayForQuery, "G04", resultStringArray, true);
+Ext.getFilteredList(stringArrayForQuery, "G04", true, resultStringArray);
 print("after filtering for :", "G04");
 filteredList = split(resultStringArray, "\t");
 Array.print(filteredList);
