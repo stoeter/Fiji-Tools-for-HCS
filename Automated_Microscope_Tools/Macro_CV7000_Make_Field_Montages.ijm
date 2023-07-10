@@ -1,4 +1,4 @@
-//CV7000-Make-Field-Monatges
+//CV7000-Make-Field-Montages
 macroName = "CV7000-Make-Field-Montages";
 macroShortDescription = "This macro opens CV7000 images of a well-channel and does a montage of the fields.";
 macroDescription = "This macro reads single CV7000 images of a well as .tif ." +
@@ -8,7 +8,7 @@ macroDescription = "This macro reads single CV7000 images of a well as .tif ." +
 	"<br>Montage order of images will be alphanumerical (e.g. field position) and row-wise." +
 	"<br>There is an option to run a channel-specific background subtraction before/after the montage." +
 	"<br>All z-projection methods selectable. Pixel size can be automatically corrected.";
-macroRelease = "fourth release 27-07-2022";
+macroRelease = "fifth release 10-07-2023";
 macroAuthor = "by Martin Stöter (stoeter(at)mpi-cbg.de)";
 generalHelpURL = "https://github.com/stoeter/Fiji-Tools-for-HCS/wiki";
 macroHelpURL = generalHelpURL + "/" + macroName;
@@ -521,6 +521,7 @@ doPixelSizeCorrection = true;  // function variable that checks it pixel sizes a
 if (!File.exists(mrfFilePath)) {
 	print("Could not find .mrf file:", mrfFilePath, "\nPixel size could not be determined and is not automatically corrected!");
 	} else {
+	return -1;  // if no .mrf file found, then return -1 as pixel size
 	mrfFile = File.openAsString(mrfFilePath);
 	lines = split(mrfFile,"\n");
 	print("Reading .mrf file... length:", mrfFile.length, "; lines:", lines.length);
