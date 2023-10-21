@@ -108,8 +108,7 @@ print("Assuming wells with ", stackSize, "fields. Please check if this is correc
 if(displayFileList || displayMetaData) waitForUser("Take a look at the list windows...");  //give user time to analyse the lists  
 
 //set montage type
-montageColumn = Math.round(Math.sqrt(stackSize));
- 
+montageColumn = Math.round(Math.sqrt(stackSize)); 
 montageRow = Math.ceil(stackSize / montageColumn);
 Dialog.create("Set montage type");
 Dialog.addNumber("Montage columns:", montageColumn);
@@ -576,3 +575,13 @@ if (!File.exists(mrfFilePath)) {
 	}  // if exists
 }  // function
 ////////////////////////////////////////   E N D    O F    M A C R O   ////////////////////////////
+
+
+
+
+
+
+
+
+
+
