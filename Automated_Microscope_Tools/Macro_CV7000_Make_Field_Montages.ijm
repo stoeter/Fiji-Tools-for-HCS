@@ -6,9 +6,10 @@ macroDescription = "This macro reads single CV7000 images of a well as .tif ." +
 	"<br>All images of a unique well and channel are opened and used for a montage." +
 	"<br>Montage settings (rows, columns) and file tag can be adjusted." +
 	"<br>Montage order of images will be alphanumerical (e.g. field position) and row-wise." +
-	"<br>There is an option to run a channel-specific background subtraction before/after the montage." +
-	"<br>All z-projection methods selectable. Pixel size can be automatically corrected.";
-macroRelease = "fifth release 10-07-2023";
+	"<br>There is an option to run a channel-specific background subtraction before/after the montage" +
+    "<br>and an option to run image re-size/scaling before the montage." +
+	"<br>For multiple montages per well batch size can be used. Pixel size can be automatically corrected.";
+macroRelease = "sixth release 21-10-2023";
 macroAuthor = "by Martin Stöter (stoeter(at)mpi-cbg.de)";
 generalHelpURL = "https://github.com/stoeter/Fiji-Tools-for-HCS/wiki";
 macroHelpURL = generalHelpURL + "/" + macroName;
@@ -62,6 +63,7 @@ availableMontageFileTags = newArray("000", "all", "put my own tag");
 defaultFilterStrings = newArray("DC_sCMOS #","SC_BP","");
 print("Files containing these strings will be automatically filtered out:");
 Array.print(defaultFilterStrings);
+montageScale = 1;
 bkgCorrection = false;
 doPixelSizeCorrection = true;
 
@@ -106,11 +108,14 @@ print("Assuming wells with ", stackSize, "fields. Please check if this is correc
 if(displayFileList || displayMetaData) waitForUser("Take a look at the list windows...");  //give user time to analyse the lists  
 
 //set montage type
-montageColumn = Math.ceil(stackSize / 2);
-montageRow = Math.floor(stackSize / 2);
+montageColumn = Math.round(Math.sqrt(stackSize));
+ 
+montageRow = Math.ceil(stackSize / montageColumn);
 Dialog.create("Set montage type");
 Dialog.addNumber("Montage columns:", montageColumn);
 Dialog.addNumber("Montage rows:", montageRow);
+Dialog.addNumber("Montage from batch of fields:", stackSize);    //does subsets of batches for montages, e.g. like if there are several partial tiles per well and field numbering in consequtive
+Dialog.addNumber("Montage scale (0.5 = half image size):", montageScale);   //seting the scale to 0.5 will reduce the dimensions of the montage by factor of 2. Default = 1 = original image size
 Dialog.addChoice("Montage file tag:", availableMontageFileTags);
 Dialog.addCheckbox("Background correction?", bkgCorrection);	//if checked background subtration will be done before and after the montage
 Dialog.addCheckbox("Automatically correct pixel size?", doPixelSizeCorrection);	//if checked .mrf file will be read and pixel size will be corrected
@@ -118,6 +123,8 @@ Dialog.addCheckbox("Set batch mode (hide images)?", batchMode);	//if checked no 
 Dialog.show();
 montageColumn = Dialog.getNumber();
 montageRow = Dialog.getNumber();
+montageBatchOfFields = Dialog.getNumber();
+montageScale = Dialog.getNumber();
 montageFileTag = Dialog.getChoice();
 bkgCorrection = Dialog.getCheckbox();
 doPixelSizeCorrection = Dialog.getCheckbox();
@@ -129,7 +136,9 @@ if (montageFileTag == "put my own tag") { // user defined file tag
 	Dialog.show();
 	montageFileTag = Dialog.getString();
 	}
-print("Montage: columns:", montageColumn, ", rows:", montageRow);
+print("Montage: columns:", montageColumn, ", rows:", montageRow, ", batch of fields:", montageBatchOfFields, ", scale:", montageScale);
+print("Montage: file tag:", montageFileTag, ", background correction:", bkgCorrection, ", pixel size correction:", doPixelSizeCorrection, ", batchMode:", batchMode);
+
 
 // set per default that no background correction is done for all channels
 correctionType = newArray(channelList.length);
@@ -171,7 +180,7 @@ for (currentWell = 0; currentWell < wellList.length; currentWell++) {   // well 
             filterTerms = newArray("include", "include", "include");  //pre-definition of filter types 
             wellChannelFileList = getFilteredFileList(fileList, false, false);
 		
-            if(wellChannelFileList.length > montageRow * montageColumn) {
+            if ((montageBatchOfFields == 0 || montageBatchOfFields == stackSize) && wellChannelFileList.length > montageRow * montageColumn) {
                 print("Error: too may files in file list for well " + wellList[currentWell] + ", channel: " + channelList[currentChannel] + ", z-plane: " + zplaneList[currentZplane]);
                 Array.print(wellChannelFileList);
                 break;
@@ -198,12 +207,27 @@ for (currentWell = 0; currentWell < wellList.length; currentWell++) {   // well 
                 	print("subtracting background with rolling ball = " + rollingBallRadius + " and type " + correctionType[currentChannel] + ":" + lightBackground);
                 	run("Subtract Background...", "rolling=" + rollingBallRadius + lightBackground + " stack");  
                 	}
-                run("Make Montage...", "columns=" + montageColumn + " rows=" + montageRow + " scale=1");
-                if (correctionType[currentChannel] != "none") run("Subtract Background...", "rolling=" + rollingBallRadius + lightBackground);
-                outputFileName = substring(currentImage,0,lengthOf(currentImage)-19) + montageFileTag + substring(currentImage,lengthOf(currentImage)-16,lengthOf(currentImage));
-                saveAs("Tiff", outputPath + outputFileName);
-                close();  // montage
-                print("saved montage as " + outputPath + outputFileName);  //to log window
+                if (montageBatchOfFields == 0 || montageBatchOfFields == stackSize) {
+	                run("Make Montage...", "columns=" + montageColumn + " rows=" + montageRow + " scale=" + montageScale);
+                	outputFileName = substring(currentImage,0,lengthOf(currentImage)-19) + montageFileTag + substring(currentImage,lengthOf(currentImage)-16,lengthOf(currentImage));
+                	if (correctionType[currentChannel] != "none") run("Subtract Background...", "rolling=" + rollingBallRadius + lightBackground);
+                	saveAs("Tiff", outputPath + outputFileName);
+                	close();  // montage
+               		print("saved montage as " + outputPath + outputFileName);  //to log window
+					} else {
+					for (i = 1; i <= round(stackSize / montageBatchOfFields); i++) {
+                	    print("Duplicate...", "title=subStack duplicate range=" + round(montageBatchOfFields * (i-1) + 1) + "-" + round(montageBatchOfFields * i) ); 
+                	    run("Duplicate...", "title=subStack duplicate range=" + round(montageBatchOfFields * (i-1) + 1) + "-" + round(montageBatchOfFields * i) );  
+                	    run("Make Montage...", "columns=" + montageColumn + " rows=" + montageRow + " scale=" + montageScale);
+	                	outputFileName = substring(currentImage,0,lengthOf(currentImage)-19) + montageFileTag + i + substring(currentImage,lengthOf(currentImage)-16,lengthOf(currentImage));
+	                	if (correctionType[currentChannel] != "none") run("Subtract Background...", "rolling=" + rollingBallRadius + lightBackground);
+	                	saveAs("Tiff", outputPath + outputFileName);
+	                	close();  // montage
+	                	print("saved montage as " + outputPath + outputFileName);  //to log window
+	                	close("subStack");
+	                	selectWindow("Stack");
+						}
+                	}
                 selectWindow("Stack"); //stack
                 close();
                 } else {  //end if images are open
@@ -520,8 +544,8 @@ doPixelSizeCorrection = true;  // function variable that checks it pixel sizes a
 // open .mrf file and split into line array  
 if (!File.exists(mrfFilePath)) {
 	print("Could not find .mrf file:", mrfFilePath, "\nPixel size could not be determined and is not automatically corrected!");
+	return -1;  // if no  then return -1 as pixel size
 	} else {
-	return -1;  // if no .mrf file found, then return -1 as pixel size
 	mrfFile = File.openAsString(mrfFilePath);
 	lines = split(mrfFile,"\n");
 	print("Reading .mrf file... length:", mrfFile.length, "; lines:", lines.length);
@@ -552,13 +576,3 @@ if (!File.exists(mrfFilePath)) {
 	}  // if exists
 }  // function
 ////////////////////////////////////////   E N D    O F    M A C R O   ////////////////////////////
-
-
-
-
-
-
-
-
-
-
