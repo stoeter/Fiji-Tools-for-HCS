@@ -63,7 +63,7 @@ Ext.getRegexMatchesFromArray(stringArrayForQuery, regexPattern, myRegexResults);
 print("result string  contains all sets of unique regex matches separated by a <tab>-sign (\\t) (this sign is invisible in Log window!) and all sets of regex groups separated by double-pipe (||)...\n", myRegexResults);
 myRegexGroupArray = split(myRegexResults, "||");
 myRegexPluginNameArray = split(myRegexGroupArray[1], "\t");
-//Array.show(myRegexPluginNameArray);
+Array.show(myRegexPluginNameArray);
 
 print("\nOPTION: use resultstring (=3 parameter) as existing path, apply regex and open all images... see also HCS-Tools macro 'Import_Image_Sequence_Recursive' ");
 // getRegexMatchesFromArray for regex on file lists 
