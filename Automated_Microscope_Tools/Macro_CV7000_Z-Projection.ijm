@@ -3,11 +3,12 @@ macroName = "CV7000-Z-Projection";
 macroShortDescription = "This macro opens CV7000 images of a well-field-channel and does a z projection.";
 macroDescription = "This macro reads single CV7000 images of a well as .tif ." +
 	"<br>The chosen folder will be searched for images including subfolders." +
+	"<br>Option to select several input folders for batch processing at end of GUI." +
 	"<br>All images of a unique well, field and channel are opened and projected." +
 	"<br>All z-projection methods selectable. Pixel size can be automatically corrected." +
 	"<br>Projection and / or image stack files (to subfolder 'stack') can be saved (can handle stacks larger than 100 (e.g. Z100))." +
 	"<br>Option to copy CV7000 meta data files to output folder.";
-macroRelease = "eighth release 06-12-2022";
+macroRelease = "1.9.0_231109";
 macroAuthor = "by Martin Stöter (stoeter(at)mpi-cbg.de)";
 generalHelpURL = "https://github.com/stoeter/Fiji-Tools-for-HCS/wiki";
 macroHelpURL = generalHelpURL + "/" + macroName;
@@ -20,7 +21,7 @@ macroHtml = "<html>"
 	+"<font color=blue>" + generalHelpURL + "</font> <br>"
 	+"<font color=black>...get these URLs from Log window!</font> <br>"
     +"</font>";
-
+	
 //print macro name and current time to Log window
 getDateAndTime(year, month, dayOfWeek, dayOfMonth, hour, minute, second, msec); month++;
 print("\\Clear");
@@ -63,6 +64,7 @@ saveProjection = true;
 saveStack = false;
 doPixelSizeCorrection = true;
 copyCV7000metadataFiles = false;
+doMultipleFolders = false;
 var zPlaneDigitProblem = 0;  // this will be only used and set to 1 if stack is saved and number of z planes are > 99, thereby 3-digits => e.g. Z100
 
 //set array variables
@@ -71,7 +73,10 @@ var filterStrings = newArray("","","");                                      //p
 var availableFilterTerms = newArray("no filtering", "include", "exclude");   //dont change this
 var filterTerms = newArray("no filtering", "no filtering", "no filtering");  //pre-definition of filter types 
 var displayFileList = false;                                                 //shall array window be shown? 
+
 setDialogImageFileFilter();
+filterStringsUserGUI = filterStrings;                                        //store strings that user enterd in "backup variable" 
+filterTermsUserGUI = filterTerms;                                            //store terms that user enterd in "backup variable" 
 
 var CV7000metadataFileList = newArray(0);                                     //initialize - list of files (metadata forom CV7000) that will be copied to outoutPath
 
@@ -95,7 +100,7 @@ if (fileList.length == 0) exit("No files to process");
 // these steps below are not neccessary anymore because this filtering is done in the getFileTypeAndCV7000metaDataFiles (filters out the CV7000 meta data files that are .tif)
 //filterStrings = newArray("DC_sCMOS #","SC_BP","");
 //filterTerms = newArray("exclude", "exclude", "no filtering"); 
-print("removing correction files from file list containing text", filterStrings[0], filterStrings[1], filterStrings[2]);
+print("removing correction files from file list containing text", defaultFilterStrings[0], defaultFilterStrings[1], defaultFilterStrings[2]);
 //fileList = getFilteredFileList(fileList, false, false);
 //if (fileList.length == 0) exit("No files to process");  
 
@@ -119,6 +124,7 @@ Dialog.addCheckbox("Save Z-stack in subfolder?", saveStack);	// if checked image
 Dialog.addCheckbox("Automatically correct pixel size?", doPixelSizeCorrection);	//if checked .mrf file will be read and pixel size will be corrected
 Dialog.addCheckbox("Copy CV7000 meta data files?", copyCV7000metadataFiles);	//if checked meta date file from CV7000, such as .mrf, .mes, correction files etc., will be copied to output path
 Dialog.addCheckbox("Set batch mode (hide images)?", batchMode);	//if checked no images will be displayed
+Dialog.addCheckbox("Process multiple folders with same settings?", doMultipleFolders);	//if checked no images will be displayed
 Dialog.show();
 projectionType = Dialog.getChoice();
 Zstart = Dialog.getNumber();
@@ -129,11 +135,7 @@ saveStack = Dialog.getCheckbox();
 doPixelSizeCorrection = Dialog.getCheckbox();
 copyCV7000metadataFiles = Dialog.getCheckbox();
 batchMode = Dialog.getCheckbox();
-
-if (saveStack) {
-	File.makeDirectory(outputPath + "stack");
-	print("made folder for saving stack files " + outputPath + "stack" + File.separator);  //to log window
-	}				
+doMultipleFolders = Dialog.getCheckbox();
 
 if (projectionFileTag == "put my own tag") { // user defined file tag
 	Dialog.create("Set projection tag");
@@ -141,74 +143,141 @@ if (projectionFileTag == "put my own tag") { // user defined file tag
 	Dialog.show();
 	projectionFileTag = Dialog.getString();
 	}
-print("Selected projection type:", projectionType, "starting from plane", Zstart, "until plane",Zstop);
-print("Saving the Z-projection (0=false, 1=true):", saveProjection, "saving the stack:", saveStack, "copy CV700 meta data files:",copyCV7000metadataFiles, "using file tag", projectionFileTag);
+print("Selected projection type:", projectionType, "starting from plane", Zstart, "until plane", Zstop);
+print("Saving the Z-projection (0=false, 1=true):", saveProjection, "saving the stack:", saveStack, "copy CV700 meta data files:", copyCV7000metadataFiles, "using file tag:", projectionFileTag, "process multiple folders:", doMultipleFolders);
 
-if (doPixelSizeCorrection) pixelSizeMrf = readMRFfile(inputPath);  // get pixel size from .mrf file
-
-print("===== starting processing.... =====");
-setBatchMode(batchMode);
-if (copyCV7000metadataFiles) copyFiles(CV7000metadataFileList, outputPath);
-
-//go through all files
-for (currentWellField = 0; currentWellField < wellFieldList.length; currentWellField++) {   // well by well
-print("well-field (" + (currentWellField + 1) + "/" + wellFieldList.length + ") ...");  //to log window
-	for (currentChannel = 0; currentChannel < channelList.length; currentChannel++) {  // channel by channel per well
-		//define new filters and filter file list for currentWell and currentChannel
-		filterStrings = newArray(wellFieldList[currentWellField],channelList[currentChannel] + ".tif","");      //pre-definition of strings to filter, add "_" because well strings e.g. A03, L01, C02 can be in file name at other places, e.g ..._A06_T0001F001L01A03Z01C02.tif and ".tif" to excluse well C02 instead of channel C02
-		filterTerms = newArray("include", "include", "no filtering");  //pre-definition of filter types 
-		wellChannelFileList = getFilteredFileList(fileList, false, false);
-		if (saveStack) wellChannelFileList = correctCV7000zPlaneDigitProblem(wellChannelFileList);
-		
-		//now open all files (wellChannelFileList) that belong to one wellField in one channel
-		for (currentFile = 0; currentFile < wellChannelFileList.length; currentFile++) {
-			//image sequence & regEx would be possible, but it seems to be slow: run("Image Sequence...", "open=Y:\\correctedimages\\Martin\\150716-wormEmbryo-Gunar-test2x3-lowLaser_20150716_143710\\150716-wormEmbryo-6half-days-old\\ file=(_B03_.*C01) sort");
-			IJ.redirectErrorMessages();
-			if (File.exists(wellChannelFileList[currentFile])) {
-				open(wellChannelFileList[currentFile]);
-				currentImage = getTitle();
-				print("opened (" + (currentFile + 1) + "/" + wellChannelFileList.length + "):", wellChannelFileList[currentFile]);  //to log window
-				if (doPixelSizeCorrection) correctPixelSize(pixelSizeMrf);   // do pixel size / unit correction
-				} else {
-				print("file not found (" + (currentFile + 1) + "/" + wellChannelFileList.length + "):", wellChannelFileList[currentFile]);  //to log window
-				}
-			showProgress(currentFile / wellChannelFileList.length);
-	       	showStatus("processing" + fileList[currentFile]);
-			} //end for all images per channel	
-		//waitForUser("done");	
-		if (nImages > 1) {
-			run("Images to Stack", "name=Stack title=[] use");
-			outputFileName = substring(currentImage, 0, lengthOf(currentImage) - 9 - zPlaneDigitProblem) + projectionFileTag + substring(currentImage, lengthOf(currentImage) - 7, lengthOf(currentImage));   // this should handle the 2-digit and 3-digit file names
-			//outputFileName = substring(currentImage, 0, lengthOf(currentImage) - 10                    ) + projectionFileTag + substring(currentImage, lengthOf(currentImage) - 7,lengthOf(currentImage)); // here file name is 3 digit  (e.g. Z234)
-			if (saveProjection) {
-				run("Z Project...", "start=" + Zstart + " stop=" + Zstop + " projection=[" + projectionType + "]");
-				saveAs("Tiff", outputPath + outputFileName);
-				print("saved projection as " + outputPath + outputFileName);  //to log window	
-				close();  //Z projection
-				}			
-			if (saveStack) {
-				selectWindow("Stack"); //stack
-				saveAs("Tiff", outputPath + "stack" + File.separator + outputFileName);
-				print("saved image stack as " + outputPath + "stack" + File.separator + outputFileName);  //to log window
-				}
-			}  //end if images are open
-		run("Close All");	
-		} //end for all channels in well
-	// clear memory
-	print("current memory:", parseInt(IJ.currentMemory())/(1024*1024*1024), "GB");
-	run("Collect Garbage");
-	print("memory after clearing:", parseInt(IJ.currentMemory())/(1024*1024*1024), "GB");
-	saveLog(outputPath + "Log_temp_" + tempLogFileNumber + ".txt");
-	}  //end for all wells
-			
-//print current time to Log window and save log
-getDateAndTime(year, month, dayOfWeek, dayOfMonth, hour, minute, second, msec); month++;
-print("Macro executed successfully.\nEnd:",year+"-"+month+"-"+dayOfMonth+", h"+hour+"-m"+minute+"-s"+second);
-selectWindow("Log");
-if(outputPath != "not available") {
-	saveAs("Text", outputPath + "Log_"+year+"-"+month+"-"+dayOfMonth+", h"+hour+"-m"+minute+"-s"+second+".txt");
-	if (File.exists(outputPath + "Log_temp_" + tempLogFileNumber +".txt")) File.delete(outputPath + "Log_temp_" + tempLogFileNumber + ".txt");  //delete current tempLog file 	
+//define input folders: bring input paths info array format
+inputPaths = newArray(inputPath);
+if (doMultipleFolders) {
+	print("\nPROCESSING MULTIPLE FOLDERS...");
+	displayFileList = false;
+	displayMetaData = false;
+	addAnotherFolder = true;
+	while (addAnotherFolder) {  // add folders to process until checkbox unchecked
+		inputPaths[inputPaths.length] = getDirectory("Choose image folder... ");
+		print("Folder added to process list:", inputPaths[inputPaths.length - 1]);
+		Dialog.create("Process multiple folders?");
+		Dialog.addCheckbox("Select another folder?", addAnotherFolder);	//if checked another interation of selection a folder is done
+		Dialog.show();
+		addAnotherFolder = Dialog.getCheckbox();
+		} // end while
 	}
+print("In total", inputPaths.length, "folders will be processed...");
+
+// start looping over all folders
+for (currentFolder = 0; currentFolder < inputPaths.length; currentFolder++) { // folder by folder
+
+    // if multiple folders are selected then make default output folder in input folder
+    if (inputPaths.length > 1) {  
+        print("\n================== starting processing a new folder... ====================");
+        print("Preparation for folder #" + (currentFolder + 1) + ":", inputPaths[currentFolder]);  //to log window
+        outputPath = substring(inputPaths[currentFolder], 0, lastIndexOf(inputPaths[currentFolder], File.separator)) + File.separator + "Zprojection" + File.separator;
+        outputPath = inputPaths[currentFolder] + "Zprojection" + File.separator;
+        File.makeDirectory(outputPath);
+        print("New output folder -> made folder for projection files: " + outputPath);  //to log window
+        }
+        
+    // if multiple folders are selected then from second iteration on the several lists need to be updated for next iteration, like fileList, CV7000metadataFileList, well/field/channelList, filterStrings/Terms(user/GUI variables)
+    if (currentFolder > 0)  { // dont do on first iteration: from second iteration on, get file list from new folder
+        print("Processing file list...");
+        
+        //get file list ALL
+        fileList = getFileListSubfolder(inputPaths[currentFolder], displayFileList);  //read all files in subfolders
+        CV7000metadataFileList = newArray(0); // reset the meta data file list
+        fileList = getFileTypeAndCV7000metaDataFiles(fileList, fileExtension, displayFileList);   // new funtion to store the CV7000 meta data files in separate list (CV7000metadataFileList)
+        filterStrings = filterStringsUserGUI;                              //restore user enterd strings from "backup variable" 
+        filterTerms = filterTermsUserGUI;                                  //restore user enterd terms from "backup variable"
+        fileList = getFilteredFileList(fileList, false, displayFileList);    //filter for strings
+        if (fileList.length == 0) exit("No files to process");  
+        print("removing correction files from file list containing text", defaultFilterStrings[0], defaultFilterStrings[1], defaultFilterStrings[2]);
+        wellList = getUniqueWellListCV7000(fileList, displayMetaData);
+        wellFieldList = getUniqueWellFieldListCV7000(fileList, displayMetaData);
+        fieldList = getUniqueFieldListCV7000(fileList, displayMetaData);
+        channelList = getUniqueChannelListCV7000(fileList, displayMetaData);
+        print(wellList.length, "wells found\n", wellFieldList.length, "well x fields found\n", fieldList.length, "fields found\n", channelList.length, "channels found\n");
+        print("Calculated number of planed in stacks is ", fileList.length / wellFieldList.length / channelList.length);
+        print("Using settings of first iteration (first selected folder)...");
+        print("Selected projection type:", projectionType, "starting from plane", Zstart, "until plane", Zstop);
+        print("Saving the Z-projection (0=false, 1=true):", saveProjection, "saving the stack:", saveStack, "copy CV700 meta data files:", copyCV7000metadataFiles, "using file tag:", projectionFileTag, "process multiple folders:", doMultipleFolders);
+        saveLog(outputPath + "Log_temp_" + tempLogFileNumber + ".txt");
+        }  // end processing of multiple folders from second folder on
+
+    if (saveStack) {
+        File.makeDirectory(outputPath + "stack");
+        print("made folder for saving stack files: " + outputPath + "stack" + File.separator);  //to log window
+        }	
+    if (doPixelSizeCorrection) pixelSizeMrf = readMRFfile(inputPaths[currentFolder]);  // get pixel size from .mrf file
+
+    print("\n===== starting processing files... =====");
+    setBatchMode(batchMode);
+    if (doMultipleFolders) print("input path is:", inputPaths[currentFolder]);
+    if (copyCV7000metadataFiles) copyFiles(CV7000metadataFileList, outputPath);
+
+    //go through all files
+    for (currentWellField = 0; currentWellField < wellFieldList.length; currentWellField++) {   // well by well
+    print("well-field (" + (currentWellField + 1) + "/" + wellFieldList.length + ") ...");  //to log window
+        for (currentChannel = 0; currentChannel < channelList.length; currentChannel++) {  // channel by channel per well
+            //define new filters and filter file list for currentWell and currentChannel
+            filterStrings = newArray(wellFieldList[currentWellField],channelList[currentChannel] + ".tif","");      //pre-definition of strings to filter, add "_" because well strings e.g. A03, L01, C02 can be in file name at other places, e.g ..._A06_T0001F001L01A03Z01C02.tif and ".tif" to excluse well C02 instead of channel C02
+            filterTerms = newArray("include", "include", "no filtering");  //pre-definition of filter types 
+            wellChannelFileList = getFilteredFileList(fileList, false, false);
+            if (saveStack) wellChannelFileList = correctCV7000zPlaneDigitProblem(wellChannelFileList);
+            
+            //now open all files (wellChannelFileList) that belong to one wellField in one channel
+            for (currentFile = 0; currentFile < wellChannelFileList.length; currentFile++) {
+                //image sequence & regEx would be possible, but it seems to be slow: run("Image Sequence...", "open=Y:\\correctedimages\\Martin\\150716-wormEmbryo-Gunar-test2x3-lowLaser_20150716_143710\\150716-wormEmbryo-6half-days-old\\ file=(_B03_.*C01) sort");
+                IJ.redirectErrorMessages();
+                if (File.exists(wellChannelFileList[currentFile])) {
+                    open(wellChannelFileList[currentFile]);
+                    currentImage = getTitle();
+                    print("opened (" + (currentFile + 1) + "/" + wellChannelFileList.length + "):", wellChannelFileList[currentFile]);  //to log window
+                    if (doPixelSizeCorrection) correctPixelSize(pixelSizeMrf);   // do pixel size / unit correction
+                    } else {
+                    print("file not found (" + (currentFile + 1) + "/" + wellChannelFileList.length + "):", wellChannelFileList[currentFile]);  //to log window
+                    }
+                showProgress(currentFile / wellChannelFileList.length);
+                showStatus("processing" + fileList[currentFile]);
+                } //end for all images per channel	
+            //waitForUser("done");	
+            if (nImages > 1) {
+                run("Images to Stack", "name=Stack title=[] use");
+                outputFileName = substring(currentImage, 0, lengthOf(currentImage) - 9 - zPlaneDigitProblem) + projectionFileTag + substring(currentImage, lengthOf(currentImage) - 7, lengthOf(currentImage));   // this should handle the 2-digit and 3-digit file names
+                //outputFileName = substring(currentImage, 0, lengthOf(currentImage) - 10                    ) + projectionFileTag + substring(currentImage, lengthOf(currentImage) - 7,lengthOf(currentImage)); // here file name is 3 digit  (e.g. Z234)
+                if (saveProjection) {
+                    run("Z Project...", "start=" + Zstart + " stop=" + Zstop + " projection=[" + projectionType + "]");
+                    saveAs("Tiff", outputPath + outputFileName);
+                    print("saved projection as " + out putPath + outputFileName);  //to log window	
+                    close();  //Z projection
+                    }			
+                if (saveStack) {
+                    selectWindow("Stack"); //stack
+                    saveAs("Tiff", outputPath + "stack" + File.separator + outputFileName);
+                    print("saved image stack as " + outputPath + "stack" + File.separator + outputFileName);  //to log window
+                    }
+                }  //end if images are open
+            run("Close All");	
+            } //end for all channels in well
+        // clear memory
+        print("current memory:", parseInt(IJ.currentMemory())/(1024*1024*1024), "GB");
+        run("Collect Garbage");
+        print("memory after clearing:", parseInt(IJ.currentMemory())/(1024*1024*1024), "GB");
+        saveLog(outputPath + "Log_temp_" + tempLogFileNumber + ".txt");
+        }  //end for all wells
+                
+    //print current time to Log window and save log
+    getDateAndTime(year, month, dayOfWeek, dayOfMonth, hour, minute, second, msec); month++;
+    if (doMultipleFolders) {
+        print("Macro executed successfully for this folder.\nFinished folder:", inputPaths[currentFolder],"at", year+"-"+month+"-"+dayOfMonth+", h"+hour+"-m"+minute+"-s"+second);
+        } else {
+        print("Macro executed successfully.\nEnd:",year+"-"+month+"-"+dayOfMonth+", h"+hour+"-m"+minute+"-s"+second);
+        }
+    selectWindow("Log");
+    if(outputPath != "not available") {
+        saveAs("Text", outputPath + "Log_"+year+"-"+month+"-"+dayOfMonth+", h"+hour+"-m"+minute+"-s"+second+".txt");
+        if (File.exists(outputPath + "Log_temp_" + tempLogFileNumber +".txt")) File.delete(outputPath + "Log_temp_" + tempLogFileNumber + ".txt");  //delete current tempLog file 	
+        }
+	} // unitl here processing of multiple folders
+
 /////////////////////////////////////////////////////////////////////////////////////////////
 ////////                             F U N C T I O N S                          /////////////
 /////////////////////////////////////////////////////////////////////////////////////////////
@@ -517,6 +586,12 @@ if (pixelUnit == "inches") {  // default, but wrong in CV7000 images
 //example: pixelSizeMrf = readMRFfile(inputPath)
 function readMRFfile(inputPath) { 
 mrfFilePath = inputPath + "MeasurementDetail.mrf";
+for (i = 0; i < CV7000metadataFileList.length; i++) { // try to find .mrf file in CV7000metadataFileList
+	if (endsWith(CV7000metadataFileList[i], ".mrf")) {
+		print("found .mrf file in meta data file list:", CV7000metadataFileList[i]);
+		mrfFilePath = CV7000metadataFileList[i];
+		}
+	}
 pixelSizeMrf = 0;  // by default initialize value that is given back by this function
 doPixelSizeCorrection = true;  // function variable that checks it pixel sizes are unique in .mrf, otherwise funtion will return -1 
 // open .mrf file and split into line array  
