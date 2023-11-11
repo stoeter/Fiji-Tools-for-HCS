@@ -8,7 +8,7 @@ macroDescription = "This macro reads single CV7000 images of a well as .tif ." +
 	"<br>All z-projection methods selectable. Pixel size can be automatically corrected." +
 	"<br>Projection and / or image stack files (to subfolder 'stack') can be saved (can handle stacks larger than 100 (e.g. Z100))." +
 	"<br>Option to copy CV7000 meta data files to output folder.";
-macroRelease = "1.9.0_231109";
+macroRelease = "1.9.1_231109";
 macroAuthor = "by Martin Stöter (stoeter(at)mpi-cbg.de)";
 generalHelpURL = "https://github.com/stoeter/Fiji-Tools-for-HCS/wiki";
 macroHelpURL = generalHelpURL + "/" + macroName;
@@ -246,7 +246,7 @@ for (currentFolder = 0; currentFolder < inputPaths.length; currentFolder++) { //
                 if (saveProjection) {
                     run("Z Project...", "start=" + Zstart + " stop=" + Zstop + " projection=[" + projectionType + "]");
                     saveAs("Tiff", outputPath + outputFileName);
-                    print("saved projection as " + out putPath + outputFileName);  //to log window	
+                    print("saved projection as " + outputPath + outputFileName);  //to log window	
                     close();  //Z projection
                     }			
                 if (saveStack) {
