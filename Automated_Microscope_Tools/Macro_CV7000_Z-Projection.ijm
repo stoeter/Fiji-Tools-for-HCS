@@ -2,44 +2,90 @@
 macroName = "CV7000-Z-Projection";
 macroShortDescription = "This macro opens CV7000 images of a well-field-channel and does a z projection.";
 macroDescription = "This macro reads single CV7000 images of a well as .tif ." +
-	"<br>The chosen folder will be searched for images including subfolders." +
-	"<br>Option to select several input folders for batch processing at end of GUI." +
-	"<br>All images of a unique well, field and channel are opened and projected." +
-	"<br>All z-projection methods selectable. Pixel size can be automatically corrected." +
-	"<br>Projection and / or image stack files (to subfolder 'stack') can be saved (can handle stacks larger than 100 (e.g. Z100))." +
-	"<br>Option to copy CV7000 meta data files to output folder.";
-macroRelease = "1.9.1_231109";
+	"\nThe chosen folder will be searched for images including subfolders." +
+	"\nOption to select several input folders for batch processing at end of GUI." +
+	"\nAll images of a unique well, field and channel are opened and projected." +
+	"\nAll z-projection methods selectable. Pixel size can be automatically corrected." +
+	"\nProjection and / or image stack files (to subfolder 'stack') can be saved (can handle stacks larger than 100 (e.g. Z100))." +
+	"\nOption to copy CV7000 meta data files to output folder.";
+macroRelease = "2.0.0_231117";
 macroAuthor = "by Martin Stöter (stoeter(at)mpi-cbg.de)";
 generalHelpURL = "https://github.com/stoeter/Fiji-Tools-for-HCS/wiki";
 macroHelpURL = generalHelpURL + "/" + macroName;
-macroHtml = "<html>" 
-	+"<font color=red>" + macroName + "\n" + macroRelease + " " + macroAuthor + "</font> <br> <br>"
-	+"<font color=black>" + macroDescription + "</font> <br> <br>"
-	+"<font color=black>Check for more help on this web page:</font> <br>"
-	+"<font color=blue>" + macroHelpURL + "</font> <br>"
-	+"<font color=black>General info:</font> <br>"
-	+"<font color=blue>" + generalHelpURL + "</font> <br>"
-	+"<font color=black>...get these URLs from Log window!</font> <br>"
-    +"</font>";
-	
+
+//===== Script Parameters =====
+#@ String  spMacroTitle      (label="<html><font color=#EE1111><em><b>===== Macro CV7000 Z-Projection =====</b></em></font></html>", visibility=MESSAGE, required=false, description="This macro opens CV7000 images of a well-field-channel and does a z projection.\nFiji-Tools-for-HCS by TDS@MPI-CBG, Version 2.0.0_231121") 
+#@ String  spMacroSubTitle   (label="<html><font color=#EE1111><em>----- use mouse-roll-over for help ----- </em></font></html>", visibility=MESSAGE, required=false, description="<html>Essential configuration in <font color=#FF6600>orange</font>. Non-persistet default values in <html><font color=#000077>dark blue</font>.<br>For further help and hints see also in Log window...</html>") 
+// image input and output
+#@ String  spInput           (label="<html><b>Select one or multiple CV7000 folders:</b></html>", visibility=MESSAGE, required=false, description="Select CV7000 measurment folder, subfolders are included.\nOutput folder does not need to be specified") 
+#@ File[]  inputPaths        (label="<html><font color=#FF6600>Input folders:</font></html>", style="both", description="For multiple folders hold SHIFT / STRG ...") 
+#@ File    outputPath        (label="<html><font color=#000077>Specific output folder?</font></html>", style="directory", value="", persist=false, description="Not essential. Per default projections will be saved in subfolder 'Zprojection' of selected input folder.\nChange default output folder name selection 'Projection tag' as 'customize own tag'") 
+// image file filter
+#@ String  spImageFileFilter (label="<html><b>Image file filter - Define the files to be processed ...</b></html>", visibility=MESSAGE, required=false, description="This feature helps to shape and filter the file list to obtain a specific set of image files") 
+#@ String  fileExtension     (label="<html><font color=#000077>Files should have this extension:</font></html>", value=".tif", persist=false, description="Enter an image extension (like '.tif') to exclude metadata files") 
+#@ String  spDefineFilter    (label="<html>Define filter for files:</html>", visibility=MESSAGE, required=false, description="Below three consecutive filters can be configured to include or exclude files based on a specific text tag")
+#@ String  filterStrings0    (label="1) Filter this text from file list:", value="", description="Enter text to specify filenames (1)")
+#@ String  filterTerms0      (label="<html><font color=#000077>1) Files with text are included/excluded?</font></html>", choices={"no filtering", "include", "exclude"}, persist=false, style="radioButtonHorizontal", description="Choose to include or exclude files with specific text (1)") 
+#@ String  filterStrings1    (label="2) Filter this text from file list:", value="", description="Enter text to specify filenames (2)") 
+#@ String  filterTerms1      (label="<html><font color=#000077>2) Files with text are included/excluded?</font></html>", choices={"no filtering", "include", "exclude"}, persist=false, style="radioButtonHorizontal", description="Choose to include or exclude files with specific text (2)") 
+#@ String  filterStrings2    (label="3) Filter this text from file list:", value="", description="Enter text to specify filenames (3)") 
+#@ String  filterTerms2      (label="<html><font color=#000077>3) Files with text are included/excluded?</font></html>", choices={"no filtering", "include", "exclude"}, persist=false, style="radioButtonHorizontal", description="Choose to include or exclude files with specific text (3)") 
+#@ Boolean displayFileList   (label="<html><font color=#000077>Display the file lists?</font></html>", value=false, persist=false, description="If checked the file lists are displyed at each step of the Image file filter")                      //if check file lists will be displayed
+#@ Boolean displayMetaData   (label="<html><font color=#000077>Display unique values of meta data?</font></html>", value=false, persist=false, description="If checked unique values of meta data from file names (like wells, fields, channel, etc.) are displyed in separate windows")    //if check file lists will be displayed
+//set projection type
+#@ String  spZprojection     (label="<html><b>Z-projection - Define settings ...</b></html>", visibility=MESSAGE, required=false, description="Customize general Z-projection settings, image file list specific settings can be set later...") 
+#@ String  projectionType    (label="Projection type:", choices={"Max Intensity", "Sum Slices", "Average Intensity", "Min Intensity", "Standard Deviation", "Median"}, style="listBox", description="Select mathematical operation per pixel in Z") 
+#@ String  projectionFileTag (label="Projection tag:", choices={"00", "all", "max", "min", "avg", "customize own tag"}, style="listBox", description="Customize file tag for projected image (or stack), e.g. ..Z01.. -> ..Z00.. or -> ..Zall.., or ...") 
+#@ Boolean saveProjection    (label="<html><font color=#000077>Save Z-projection?</font></html>", value=true, persist=false, description="If checked projected file will be saved") 
+#@ Boolean saveStack         (label="<html><font color=#000077>Save Z-stack in subfolder?</font></html>", value=false, persist=false, description="If checked images will be saved as a stack in one file") 
+//set projection type
+#@ String  spGeneral         (label="<html><b>General settings ...</b></html>", visibility=MESSAGE, required=false, description="Select other general features of the script") 
+#@ Boolean doPixelSizeCorr   (label="<html><font color=#000077>Automatically correct pixel size?</font></html>", value=true, persist=false, description="If checked .mrf file will be read and pixel size will be corrected") 
+#@ Boolean copyMetaDataFiles (label="<html><font color=#000077>Copy CV7000 meta data files?</font></html>", value=false, persist=false, description="If checked meta data files from CV7000, such as .mrf, .mes, correction files, etc., will be copied to output path") 
+#@ Boolean batchMode         (label="<html><font color=#000077>Set batch mode (hide images)?</font></html>", value=true, persist=false, description="If checked no images will be displayed while processing") 
+
 //print macro name and current time to Log window
 getDateAndTime(year, month, dayOfWeek, dayOfMonth, hour, minute, second, msec); month++;
 print("\\Clear");
 print(macroName, "(" + macroRelease + ")", "\nStart:",year + "-" + month + "-" + dayOfMonth + ", h" + hour + "-m" + minute + "-s" + second);
+print(macroDescription);
 print(macroHelpURL);
 print(generalHelpURL);
 
-//start macro
-Dialog.create("Fiji macro: " + macroName);
-Dialog.addMessage("Fiji macro: " + macroName + " (Fiji-Tools-for-HCS by TDS@MPI-CBG)\n \n" + macroShortDescription + "\n \nClick 'OK' to go on, 'Cancel' to quit or 'Help' for online description.");     
-Dialog.addHelp(macroHtml);
-Dialog.show;
+// ===== organize oupput folder stttings  =====
+print("\n=== Input / Output settings ===\nInput path(s):");
+for (i = 0; i < inputPaths.length; i++) {
+	inputPaths[i] = inputPaths[i] + File.separator;
+	print(inputPaths[i]);
+}
+//Array.show(inputPaths);
+print("In total", inputPaths.length, "folder(s) will be processed...");
 
-//choose folders
-inputPath = getDirectory("Choose image folder... ");
-outputPath = getDirectory("Choose result image folder... or create a folder");
-printPaths = "inputPath = \"" + inputPath + "\";\noutputPath = \"" + outputPath + "\";";
-print(printPaths);
+// ===== organize output (folder) settings  =====
+defaultOutputfolderName = "Zprojection";
+// if no selection in script parameters, then it is output path is ImageJ path!?? Set variavle outputPathSelected then to 0, it is 1 when an outputPath was selected
+//print((replace(outputPath + File.separator, File.separator, "/") == replace(getDir("imagej") , File.separator, "/")));
+outputPathSelected = !( replace(outputPath + File.separator, File.separator, "/") == replace(getDir("imagej") , File.separator, "/") );  // cannot compare strings with backslash!???
+print(outputPathSelected);
+
+//set output projection folder name
+if (projectionFileTag == "customize own tag") { // user defined output folder name
+	Dialog.create("Set specific projection tag options");
+	Dialog.addString("Projection file tag:", "00");
+	Dialog.addString("Change default output folder name?", defaultOutputfolderName);
+	Dialog.show();
+	projectionFileTag = Dialog.getString();
+	defaultOutputfolderName = Dialog.getString();
+	print("Default output folder was set to:", defaultOutputfolderName);
+	}
+					
+if ( (inputPaths.length > 1) || !outputPathSelected ) { // cannot compare strings with backslash!???
+	print("Selected output path will be ignored and ouput folders will be generated automatically in each input folder");
+	outputPathSelected = false;
+	} else {
+	outputPath = outputPath + File.separator;
+	print("Output path:", outputPath,"");
+	}
 
 //set log file number
 tempLogFileNumber = 1;
@@ -54,164 +100,95 @@ run("Close All");
 ////////////////////////////////        M A C R O   C O D E         /////////////////////////////// 
 
 //set variables
-batchMode = true;
-availableProjectionTerms = newArray("Max Intensity", "Sum Slices", "Average Intensity", "Min Intensity", "Standard Deviation", "Median");
-availableProjectionFileTags = newArray("00", "all", "max", "min", "avg", "put my own tag");
-var defaultFilterStrings = newArray("DC_sCMOS #","SC_BP","");
-print("Files containing these strings will be automatically filtered out:");
-Array.print(defaultFilterStrings);
-saveProjection = true;
-saveStack = false;
-doPixelSizeCorrection = true;
-copyCV7000metadataFiles = false;
-doMultipleFolders = false;
 var zPlaneDigitProblem = 0;  // this will be only used and set to 1 if stack is saved and number of z planes are > 99, thereby 3-digits => e.g. Z100
+var CV7000metadataFileList = newArray(0);                                     //initialize - list of files (metadata forom CV7000) that will be copied to outoutPath
 
 //set array variables
-var fileExtension = ".tif";                                                  //pre-definition of extension
-var filterStrings = newArray("","","");                                      //pre-definition of strings to filter
-var availableFilterTerms = newArray("no filtering", "include", "exclude");   //dont change this
-var filterTerms = newArray("no filtering", "no filtering", "no filtering");  //pre-definition of filter types 
-var displayFileList = false;                                                 //shall array window be shown? 
+var defaultFilterStrings = newArray("DC_sCMOS #","SC_BP","");
+print("\nFiles (images) containing these strings will be automatically filtered out:");
+Array.print(defaultFilterStrings);                                               //pre-definition of extension
+var filterStrings = newArray(filterStrings0, filterStrings1, filterStrings2);     // get variable settings from script parameter GUI
+var availableFilterTerms = newArray("no filtering", "include", "exclude");    //dont change this
+var filterTerms = newArray(filterTerms0, filterTerms1, filterTerms2);         // get variable settings from script parameter GUI
 
-setDialogImageFileFilter();
+//setDialogImageFileFilter();  //replaced by scrip parameters
 filterStringsUserGUI = filterStrings;                                        //store strings that user enterd in "backup variable" 
 filterTermsUserGUI = filterTerms;                                            //store terms that user enterd in "backup variable" 
 
-var CV7000metadataFileList = newArray(0);                                     //initialize - list of files (metadata forom CV7000) that will be copied to outoutPath
-
 print("Image file filter:", filterTerms[0],filterStrings[0] + ";",filterTerms[1],filterStrings[1] + ";",filterTerms[2],filterStrings[2]);
-
-displayMetaData = false;
-Dialog.create("Find meta data of file names");
-Dialog.addCheckbox("Display unique values of meta data:", displayMetaData);	
-Dialog.show();
-displayMetaData = Dialog.getCheckbox();
-
-print("Processing file list...");
-
-//get file list ALL
-fileList = getFileListSubfolder(inputPath, displayFileList);  //read all files in subfolders
-//fileList = getFileType(fileList, fileExtension, displayFileList);
-fileList = getFileTypeAndCV7000metaDataFiles(fileList, fileExtension, displayFileList);   // new funtion to store the CV7000 meta data files in separate list (CV7000metadataFileList)
-fileList = getFilteredFileList(fileList, false, displayFileList);    //filter for strings
-if (fileList.length == 0) exit("No files to process");  
-
-// these steps below are not neccessary anymore because this filtering is done in the getFileTypeAndCV7000metaDataFiles (filters out the CV7000 meta data files that are .tif)
-//filterStrings = newArray("DC_sCMOS #","SC_BP","");
-//filterTerms = newArray("exclude", "exclude", "no filtering"); 
-print("removing correction files from file list containing text", defaultFilterStrings[0], defaultFilterStrings[1], defaultFilterStrings[2]);
-//fileList = getFilteredFileList(fileList, false, false);
-//if (fileList.length == 0) exit("No files to process");  
-
-wellList = getUniqueWellListCV7000(fileList, displayMetaData);
-wellFieldList = getUniqueWellFieldListCV7000(fileList, displayMetaData);
-fieldList = getUniqueFieldListCV7000(fileList, displayMetaData);
-channelList = getUniqueChannelListCV7000(fileList, displayMetaData);
-print(wellList.length, "wells found\n", wellFieldList.length, "well x fields found\n", fieldList.length, "fields found\n", channelList.length, "channels found\n");
-stackSize = fileList.length / wellFieldList.length / channelList.length;
-print("Assuming stacks with ", stackSize, "planes. Please check if this is correct!");
-if(displayFileList || displayMetaData) waitForUser("Take a look at the list windows...");  //give user time to analyse the lists  
-
-//set projection type
-Dialog.create("Set projection type");
-Dialog.addChoice("Projection:", availableProjectionTerms);	//set number of images in one row
-Dialog.addNumber("Lowest plane:", 1);
-Dialog.addNumber("Highest plane:", stackSize);
-Dialog.addChoice("Projection file tag:", availableProjectionFileTags);
-Dialog.addCheckbox("Save Z-projection?", saveProjection);	// if checked images will be saved as projection
-Dialog.addCheckbox("Save Z-stack in subfolder?", saveStack);	// if checked images will be saved as stack
-Dialog.addCheckbox("Automatically correct pixel size?", doPixelSizeCorrection);	//if checked .mrf file will be read and pixel size will be corrected
-Dialog.addCheckbox("Copy CV7000 meta data files?", copyCV7000metadataFiles);	//if checked meta date file from CV7000, such as .mrf, .mes, correction files etc., will be copied to output path
-Dialog.addCheckbox("Set batch mode (hide images)?", batchMode);	//if checked no images will be displayed
-Dialog.addCheckbox("Process multiple folders with same settings?", doMultipleFolders);	//if checked no images will be displayed
-Dialog.show();
-projectionType = Dialog.getChoice();
-Zstart = Dialog.getNumber();
-Zstop = Dialog.getNumber();
-projectionFileTag = Dialog.getChoice();
-saveProjection = Dialog.getCheckbox();
-saveStack = Dialog.getCheckbox();
-doPixelSizeCorrection = Dialog.getCheckbox();
-copyCV7000metadataFiles = Dialog.getCheckbox();
-batchMode = Dialog.getCheckbox();
-doMultipleFolders = Dialog.getCheckbox();
-
-if (projectionFileTag == "put my own tag") { // user defined file tag
-	Dialog.create("Set projection tag");
-	Dialog.addString("Projection file tag:", availableProjectionFileTags[1]);
-	Dialog.show();
-	projectionFileTag = Dialog.getString();
-	}
-print("Selected projection type:", projectionType, "starting from plane", Zstart, "until plane", Zstop);
-print("Saving the Z-projection (0=false, 1=true):", saveProjection, "saving the stack:", saveStack, "copy CV700 meta data files:", copyCV7000metadataFiles, "using file tag:", projectionFileTag, "process multiple folders:", doMultipleFolders);
-
-//define input folders: bring input paths info array format
-inputPaths = newArray(inputPath);
-if (doMultipleFolders) {
-	print("\nPROCESSING MULTIPLE FOLDERS...");
-	displayFileList = false;
-	displayMetaData = false;
-	addAnotherFolder = true;
-	while (addAnotherFolder) {  // add folders to process until checkbox unchecked
-		inputPaths[inputPaths.length] = getDirectory("Choose image folder... ");
-		print("Folder added to process list:", inputPaths[inputPaths.length - 1]);
-		Dialog.create("Process multiple folders?");
-		Dialog.addCheckbox("Select another folder?", addAnotherFolder);	//if checked another interation of selection a folder is done
-		Dialog.show();
-		addAnotherFolder = Dialog.getCheckbox();
-		} // end while
-	}
-print("In total", inputPaths.length, "folders will be processed...");
 
 // start looping over all folders
 for (currentFolder = 0; currentFolder < inputPaths.length; currentFolder++) { // folder by folder
+    inputPath = inputPaths[currentFolder];   // need to create static variable here from current array value, because a funtion (getFileListSubfolder) need to check against this global variable
+	print("\n================== starting processing folder #" + (currentFolder + 1) + "... ====================");
+    print("Preparation for folder #" + (currentFolder + 1) + ":", inputPaths[currentFolder]);  //to log window
 
-    // if multiple folders are selected then make default output folder in input folder
-    if (inputPaths.length > 1) {  
-        print("\n================== starting processing a new folder... ====================");
-        print("Preparation for folder #" + (currentFolder + 1) + ":", inputPaths[currentFolder]);  //to log window
-        outputPath = substring(inputPaths[currentFolder], 0, lastIndexOf(inputPaths[currentFolder], File.separator)) + File.separator + "Zprojection" + File.separator;
-        outputPath = inputPaths[currentFolder] + "Zprojection" + File.separator;
+// if multiple folders are selected or no outputPath was selected (see above) then make default output folder in input folder
+    if (!outputPathSelected ) {  
+        //outputPath = substring(inputPaths[currentFolder], 0, lastIndexOf(inputPaths[currentFolder], File.separator)) + File.separator + "Zprojection" + File.separator;
+        outputPath = inputPath + defaultOutputfolderName + File.separator;
         File.makeDirectory(outputPath);
         print("New output folder -> made folder for projection files: " + outputPath);  //to log window
         }
-        
-    // if multiple folders are selected then from second iteration on the several lists need to be updated for next iteration, like fileList, CV7000metadataFileList, well/field/channelList, filterStrings/Terms(user/GUI variables)
-    if (currentFolder > 0)  { // dont do on first iteration: from second iteration on, get file list from new folder
-        print("Processing file list...");
-        
-        //get file list ALL
-        fileList = getFileListSubfolder(inputPaths[currentFolder], displayFileList);  //read all files in subfolders
-        CV7000metadataFileList = newArray(0); // reset the meta data file list
-        fileList = getFileTypeAndCV7000metaDataFiles(fileList, fileExtension, displayFileList);   // new funtion to store the CV7000 meta data files in separate list (CV7000metadataFileList)
-        filterStrings = filterStringsUserGUI;                              //restore user enterd strings from "backup variable" 
-        filterTerms = filterTermsUserGUI;                                  //restore user enterd terms from "backup variable"
-        fileList = getFilteredFileList(fileList, false, displayFileList);    //filter for strings
-        if (fileList.length == 0) exit("No files to process");  
-        print("removing correction files from file list containing text", defaultFilterStrings[0], defaultFilterStrings[1], defaultFilterStrings[2]);
-        wellList = getUniqueWellListCV7000(fileList, displayMetaData);
-        wellFieldList = getUniqueWellFieldListCV7000(fileList, displayMetaData);
-        fieldList = getUniqueFieldListCV7000(fileList, displayMetaData);
-        channelList = getUniqueChannelListCV7000(fileList, displayMetaData);
-        print(wellList.length, "wells found\n", wellFieldList.length, "well x fields found\n", fieldList.length, "fields found\n", channelList.length, "channels found\n");
-        print("Calculated number of planed in stacks is ", fileList.length / wellFieldList.length / channelList.length);
-        print("Using settings of first iteration (first selected folder)...");
-        print("Selected projection type:", projectionType, "starting from plane", Zstart, "until plane", Zstop);
-        print("Saving the Z-projection (0=false, 1=true):", saveProjection, "saving the stack:", saveStack, "copy CV700 meta data files:", copyCV7000metadataFiles, "using file tag:", projectionFileTag, "process multiple folders:", doMultipleFolders);
-        saveLog(outputPath + "Log_temp_" + tempLogFileNumber + ".txt");
-        }  // end processing of multiple folders from second folder on
+	saveLog(outputPath + "Log_temp_" + tempLogFileNumber + ".txt");	
+	
+	print("Processing file list...");
+
+	// for multiple folders from second iteration on the several lists need to be updated/reseted for next iteration, like fileList, CV7000metadataFileList, well/field/channelList, filterStrings/Terms(user/GUI variables)
+    if (currentFolder > 0)  {                         // dont do on first iteration: from second iteration on, get file list from new folder
+    	CV7000metadataFileList = newArray(0);         // reset the meta data file list
+    	filterStrings = filterStringsUserGUI;         //restore user enterd strings from "backup variable" 
+    	filterTerms = filterTermsUserGUI;
+    	displayFileList = false;                      // dont display lists after the first iteration
+		displayMetaData = false;
+    	}
+    //get file list ALL
+    fileList = getFileListSubfolder(inputPaths[currentFolder], displayFileList);  //read all files in subfolders                          
+    fileList = getFileTypeAndCV7000metaDataFiles(fileList, fileExtension, displayFileList);   // new funtion to store the CV7000 meta data files in separate list (CV7000metadataFileList)
+    filterStrings = filterStringsUserGUI;                              //restore user enterd strings from "backup variable" 
+    filterTerms = filterTermsUserGUI;                                  //restore user enterd terms from "backup variable"
+    fileList = getFilteredFileList(fileList, false, displayFileList);    //filter for strings
+    if (fileList.length == 0) exit("No files to process"); 
+    //print("removing correction files from file list containing text", defaultFilterStrings[0], defaultFilterStrings[1], defaultFilterStrings[2]);
+    wellList = getUniqueWellListCV7000(fileList, displayMetaData);
+    wellFieldList = getUniqueWellFieldListCV7000(fileList, displayMetaData);
+    fieldList = getUniqueFieldListCV7000(fileList, displayMetaData);
+    channelList = getUniqueChannelListCV7000(fileList, displayMetaData);
+    //print(wellList.length, "wells found\n", wellFieldList.length, "well x fields found\n", fieldList.length, "fields found\n", channelList.length, "channels found\n");
+    
+    if (currentFolder == 0) { // in first iteration check stack size and options
+    	stackSize = fileList.length / wellFieldList.length / channelList.length;
+    	print("Assuming stacks with ", stackSize, "planes. Please check if this is correct!");
+		if (displayFileList || displayMetaData) waitForUser("Take a look at the list windows...");  //give user time to analyse the lists 
+    	
+    	//set projection type
+		Dialog.create("Set specific projection options");
+		Dialog.addMessage("Set projection dimension");
+		Dialog.addNumber("Lowest plane:", 1);
+		Dialog.addNumber("Highest plane:", stackSize);
+		Dialog.show();
+		Zstart = Dialog.getNumber();
+		Zstop = Dialog.getNumber();
+
+    	} else {  // from second iteration on...
+		print("Calculated number of planes in stacks is ", fileList.length / wellFieldList.length / channelList.length);
+       	print("Using settings of first iteration (first selected folder)...");        
+        }
+
+	print("Selected projection type:", projectionType, "starting from plane", Zstart, "until plane", Zstop);
+    print("Saving the Z-projection (0=false, 1=true):", saveProjection, "saving the stack:", saveStack, "copy CV700 meta data files:", copyMetaDataFiles, "using file tag:", projectionFileTag);
+	saveLog(outputPath + "Log_temp_" + tempLogFileNumber + ".txt"); 
 
     if (saveStack) {
         File.makeDirectory(outputPath + "stack");
         print("made folder for saving stack files: " + outputPath + "stack" + File.separator);  //to log window
         }	
-    if (doPixelSizeCorrection) pixelSizeMrf = readMRFfile(inputPaths[currentFolder]);  // get pixel size from .mrf file
+    if (doPixelSizeCorr) pixelSizeMrf = readMRFfile(inputPaths[currentFolder]);  // get pixel size from .mrf file
 
     print("\n===== starting processing files... =====");
     setBatchMode(batchMode);
-    if (doMultipleFolders) print("input path is:", inputPaths[currentFolder]);
-    if (copyCV7000metadataFiles) copyFiles(CV7000metadataFileList, outputPath);
+	print("Input path is:", inputPaths[currentFolder]);
+    if (copyMetaDataFiles) copyFiles(CV7000metadataFileList, outputPath);
 
     //go through all files
     for (currentWellField = 0; currentWellField < wellFieldList.length; currentWellField++) {   // well by well
@@ -231,7 +208,7 @@ for (currentFolder = 0; currentFolder < inputPaths.length; currentFolder++) { //
                     open(wellChannelFileList[currentFile]);
                     currentImage = getTitle();
                     print("opened (" + (currentFile + 1) + "/" + wellChannelFileList.length + "):", wellChannelFileList[currentFile]);  //to log window
-                    if (doPixelSizeCorrection) correctPixelSize(pixelSizeMrf);   // do pixel size / unit correction
+                    if (doPixelSizeCorr) correctPixelSize(pixelSizeMrf);   // do pixel size / unit correction
                     } else {
                     print("file not found (" + (currentFile + 1) + "/" + wellChannelFileList.length + "):", wellChannelFileList[currentFile]);  //to log window
                     }
@@ -266,7 +243,7 @@ for (currentFolder = 0; currentFolder < inputPaths.length; currentFolder++) { //
                 
     //print current time to Log window and save log
     getDateAndTime(year, month, dayOfWeek, dayOfMonth, hour, minute, second, msec); month++;
-    if (doMultipleFolders) {
+    if ((currentFolder + 1 ) < inputPaths.length) {
         print("Macro executed successfully for this folder.\nFinished folder:", inputPaths[currentFolder],"at", year+"-"+month+"-"+dayOfMonth+", h"+hour+"-m"+minute+"-s"+second);
         } else {
         print("Macro executed successfully.\nEnd:",year+"-"+month+"-"+dayOfMonth+", h"+hour+"-m"+minute+"-s"+second);
@@ -282,36 +259,6 @@ for (currentFolder = 0; currentFolder < inputPaths.length; currentFolder++) { //
 ////////                             F U N C T I O N S                          /////////////
 /////////////////////////////////////////////////////////////////////////////////////////////
 
-//function opens a dialog to set text list for filtering a list
-//example: setDialogImageFileFilter();
-//this function set interactively the global variables used by the function getFilteredFileList
-//this function needs global variables! (see below)
-/*
-var fileExtension = ".tif";                                                  //default definition of extension
-var filterStrings = newArray("","","");                                      //default definition of strings to filter
-var availableFilterTerms = newArray("no filtering", "include", "exclude");   //dont change this
-var filterTerms = newArray(filterStrings.length); for  (i = 0; i < filterStrings.length; i++) {filterTerms[i] = "no filtering";} //default definition of filter types (automatic)
-//var filterTerms = newArray("no filtering", "no filtering", "no filtering");  //default definition of filter types (manual)
-var displayFileList = false;                                                 //shall array window be shown? 
-*/
-function setDialogImageFileFilter() {
-Dialog.create("Image file filter...");  //enable use inveractivity
-Dialog.addMessage("Define the files to be processed:");
-Dialog.addString("Files should have this extension:", fileExtension);	//add extension
-Dialog.addMessage("Define filter for files:");
-for (i = 0; i < filterStrings.length; i++) {
-	Dialog.addString((i + 1) + ") Filter this text from file list: ", filterStrings[i]);	
-	Dialog.addChoice((i + 1) + ") Files with text are included/excluded?", availableFilterTerms, filterTerms[i]);	
-	}
-Dialog.addCheckbox("Display the file lists?", displayFileList);	//if check file lists will be displayed
-Dialog.show();
-fileExtension = Dialog.getString();
-for (i = 0; i < filterStrings.length; i++) {
-	filterStrings[i] = Dialog.getString();	
-	filterTerms[i] = Dialog.getChoice();	
-	}
-displayFileList = Dialog.getCheckbox();
-}
 
 //function filters a file list for a certain strings
 //example: myFileList = getFilteredFileList(myFileList, false, true);
@@ -347,14 +294,16 @@ fileListFunction = getFileList(inputPathFunction);  //read file list
 Array.sort(fileListFunction);
 returnedFileList = newArray(0);     //this list stores all found files and is returned at the end of the function
 for (i=0; i < fileListFunction.length; i++) {
+	//print(i, inputPathFunction + fileListFunction[i]);
 	if ((File.separator == "\\") && (endsWith(fileListFunction[i], "/"))) fileListFunction[i] = replace(fileListFunction[i],"/",File.separator); //fix windows/Fiji File.separator bug
+	//print("fixed", i, inputPathFunction + fileListFunction[i]);
 	if (endsWith(fileListFunction[i], File.separator)) {   //if it is a folder
 		returnedFileListTemp = newArray(0);
 		returnedFileListTemp = getFileListSubfolder(inputPathFunction + fileListFunction[i], displayList);
 		returnedFileList = Array.concat(returnedFileList, returnedFileListTemp);
 		} else {  									//if it is a file
 		returnedFileList = Array.concat(returnedFileList, inputPathFunction + fileListFunction[i]);
-		//print(i, inputPath + fileList[i]); //to log window
+		//print(i, inputPathFunction + fileListFunction[i]); //to log window
 		}
 	}
 if(inputPathFunction == inputPath) { //if local variable is equal to global path variable = if path is folder and NOT subfolder
@@ -365,26 +314,11 @@ return returnedFileList;
 }
 
 //function filters all files with certain extension
-//example: myFileList = getFileType(myFileList, ".tif", true);
-function getFileType(fileListFunction, fileExtension, displayList) {
-returnedFileList = newArray(0);     //this list stores all files found to have the extension and is returned at the end of the function
-if(lengthOf(fileExtension) > 0) {
-	for (i = 0; i < fileListFunction.length; i++) {
-		if (endsWith(fileListFunction[i], fileExtension)) returnedFileList = Array.concat(returnedFileList, fileListFunction[i]);
-	print(returnedFileList.length + " file(s) found with extension " + fileExtension + ".");
-	if (displayList) {Array.show("All files - filtered for " + fileExtension, returnedFileList);} 
-	} else {
-	returnedFileList = fileListFunction;	
-	}
-return returnedFileList;
-}
-
-//function filters all files with certain extension
 //example: myFileList = getFileTypeAndCV7000metaDataFiles(myFileList, ".tif", true);
 function getFileTypeAndCV7000metaDataFiles(fileListFunction, fileExtension, displayList) {
 returnedFileList = newArray(0);     //this list stores all files found to have the extension and is returned at the end of the function
 defaultCV7000metadataFileExtensionList = newArray(".icr", ".mes", ".mlf", ".mrf", ".wpi", ".wpp", ".xml");
-if(lengthOf(fileExtension) > 0) {
+if (lengthOf(fileExtension) > 0) {
 	for (i = 0; i < fileListFunction.length; i++) {
 		if (endsWith(fileListFunction[i], fileExtension)) {                    // if this is e.g. .tif
 			if (indexOf(fileListFunction[i], defaultFilterStrings[0]) > 0 ||   // is "DC_sCMOS #"
@@ -460,6 +394,7 @@ for (i = 1; i < inputArray.length; i++) {
 	}
 print(returnedWellList.length + " well(s) found."); 
 Array.sort(returnedWellList);
+Array.print(returnedWellList);
 if (displayList) {Array.show("List of " + returnedWellList.length + " unique wells", returnedWellList);}	
 return returnedWellList;
 }
@@ -496,6 +431,7 @@ for (i = 0; i < inputArray.length; i++) {
 	}
 print(returnedWellFieldList.length + " well field(s) found."); 
 Array.sort(returnedWellFieldList);
+Array.print(returnedWellFieldList);
 if (displayList) {Array.show("List of " + returnedWellFieldList.length + " unique well fields", returnedWellFieldList);}	
 return returnedWellFieldList;
 }
@@ -520,6 +456,7 @@ for (i = 0; i < inputArray.length; i++) {
 	}
 print(returnedFieldList.length + " field(s) found."); 
 Array.sort(returnedFieldList);
+Array.print(returnedFieldList);
 if (displayList) {Array.show("List of " + returnedFieldList.length + " unique fields", returnedFieldList);}	
 return returnedFieldList;
 }
@@ -544,6 +481,7 @@ for (i = 1; i < inputArray.length; i++) {
 	}
 print(returnedChannelList.length + " channel(s) found."); 
 Array.sort(returnedChannelList);
+Array.print(returnedChannelList);
 if (displayList) {Array.show("List of " + returnedChannelList.length + " unique channels", returnedChannelList);}	
 return returnedChannelList;
 }
@@ -593,7 +531,7 @@ for (i = 0; i < CV7000metadataFileList.length; i++) { // try to find .mrf file i
 		}
 	}
 pixelSizeMrf = 0;  // by default initialize value that is given back by this function
-doPixelSizeCorrection = true;  // function variable that checks it pixel sizes are unique in .mrf, otherwise funtion will return -1 
+doPixelSizeCorr = true;  // function variable that checks it pixel sizes are unique in .mrf, otherwise funtion will return -1 
 // open .mrf file and split into line array  
 if (!File.exists(mrfFilePath)) {
 	print("Could not find .mrf file:", mrfFilePath, "\nPixel size could not be determined and is not automatically corrected!");
@@ -610,9 +548,9 @@ if (!File.exists(mrfFilePath)) {
 	    	if (pixelSizeMrf == 0) {     // on first iteration
  		   		pixelSizeMrf = splitLines[3];
     			} else {
-    			if (pixelSizeMrf != splitLines[3] && doPixelSizeCorrection) {     // if multiple pixel sizes or no correction 
+    			if (pixelSizeMrf != splitLines[3] && doPixelSizeCorr) {     // if multiple pixel sizes or no correction 
     				print("Multiple pixel sizes in .mrf file. No correction of pixel sizes will be applied, because this could lead to mistakes...");
-    				doPixelSizeCorrection = false;
+    				doPixelSizeCorr = false;
     				pixelSizeMrf = splitLines[3];
     				} else {                                                 // if all is normal
     				pixelSizeMrf = splitLines[3];
@@ -621,7 +559,7 @@ if (!File.exists(mrfFilePath)) {
     		print("Channel", channelMrf, "has pixel size of", pixelSizeMrf, "um/px");
     		}  // line matches
 		}  // for each line
-	if (doPixelSizeCorrection == false) {
+	if (doPixelSizeCorr == false) {
 		return -1;  // if multiple pixel sizes in .mrf, then return -1 as pixel size
 		} else {
 		return pixelSizeMrf;	
@@ -659,11 +597,10 @@ function correctCV7000zPlaneDigitProblem(wellChannelFileListFunction) {
 		}
 	if (max > min + 1) {
 		print("found 2- and more-digit formats in CV7000 file names. File names will not be sorted correctly. Length (min, max):" , min , max);	
-		waitForUser(title,"Found 2- and more-digit formats in CV7000 file names. File names will not be sorted correctly!");
+		waitForUser("WARNING!","Found 2- and more-digit formats in CV7000 file names. File names will not be sorted correctly!");
 		}
 	return wellChannelFileListFunction;
 }  // function		
-
 
 //function copies files (the metadata files from CV7000) to destination folder
 //example: copyFiles(metadataFileList, outputPath);
