@@ -152,13 +152,27 @@ if (bkgCorrection) { // set specify background correction
 		Dialog.addChoice("Background correction for channel: " + channelList[currentChannel], newArray("none", "dark", "light"), defaultSetting);
 		}
 	Dialog.addNumber("Rolling ball radius:", 150);	
+	Dialog.addCheckbox("Sliding paraboliod?", false);
+	Dialog.addCheckbox("Disable smoothing?", false);
 	Dialog.show();
 	for (currentChannel = 0; currentChannel < channelList.length; currentChannel++) {
 		correctionType[currentChannel] = Dialog.getChoice();
 		print("Channel -", channelList[currentChannel], ":", correctionType[currentChannel]);
 		}
 	rollingBallRadius = Dialog.getNumber();	
-	print("Rolling ball radius:", rollingBallRadius);
+	slidingParaboliod = Dialog.getCheckbox();
+	diableSmoothing = Dialog.getCheckbox();
+	print("Rolling ball radius:", rollingBallRadius, "; Sliding paraboliod:", slidingParaboliod, "; Disable smoothing:", diableSmoothing);
+	if(slidingParaboliod == false) {
+		slidingParaboliod = ""; 
+		} else {
+		slidingParaboliod = "sliding";
+		}
+	if(diableSmoothing == false) {
+		diableSmoothing = "";
+		} else {
+		diableSmoothing = "disable";
+		}
 	}
 
 if (doPixelSizeCorrection) pixelSizeMrf = readMRFfile(inputPath);  // get pixel size from .mrf file
@@ -203,13 +217,13 @@ for (currentWell = 0; currentWell < wellList.length; currentWell++) {   // well 
             if (nImages > 1) {
                 run("Images to Stack", "name=Stack title=[] use");
                 if (correctionType[currentChannel] != "none") {  // lightBackground is alwasy "" unless it is bright field, then it is " light"
-                	print("subtracting background with rolling ball = " + rollingBallRadius + " and type " + correctionType[currentChannel] + ":" + lightBackground);
-                	run("Subtract Background...", "rolling=" + rollingBallRadius + lightBackground + " stack");  
+                	print("subtracting background with rolling ball = " + rollingBallRadius + " and type " + correctionType[currentChannel] + ":" + lightBackground, slidingParaboliod, diableSmoothing);
+                	run("Subtract Background...", "rolling=" + rollingBallRadius + lightBackground + " stack" + slidingParaboliod + diableSmoothing);  
                 	}
                 if (montageBatchOfFields == 0 || montageBatchOfFields == stackSize) {
 	                run("Make Montage...", "columns=" + montageColumn + " rows=" + montageRow + " scale=" + montageScale);
                 	outputFileName = substring(currentImage,0,lengthOf(currentImage)-19) + montageFileTag + substring(currentImage,lengthOf(currentImage)-16,lengthOf(currentImage));
-                	if (correctionType[currentChannel] != "none") run("Subtract Background...", "rolling=" + rollingBallRadius + lightBackground);
+                	if (correctionType[currentChannel] != "none") run("Subtract Background...", "rolling=" + rollingBallRadius + lightBackground + slidingParaboliod + diableSmoothing);
                 	saveAs("Tiff", outputPath + outputFileName);
                 	close();  // montage
                		print("saved montage as " + outputPath + outputFileName);  //to log window
@@ -219,7 +233,7 @@ for (currentWell = 0; currentWell < wellList.length; currentWell++) {   // well 
                 	    run("Duplicate...", "title=subStack duplicate range=" + round(montageBatchOfFields * (i-1) + 1) + "-" + round(montageBatchOfFields * i) );  
                 	    run("Make Montage...", "columns=" + montageColumn + " rows=" + montageRow + " scale=" + montageScale);
 	                	outputFileName = substring(currentImage,0,lengthOf(currentImage)-19) + montageFileTag + i + substring(currentImage,lengthOf(currentImage)-16,lengthOf(currentImage));
-	                	if (correctionType[currentChannel] != "none") run("Subtract Background...", "rolling=" + rollingBallRadius + lightBackground);
+	                	if (correctionType[currentChannel] != "none") run("Subtract Background...", "rolling=" + rollingBallRadius + lightBackground + slidingParaboliod + diableSmoothing);
 	                	saveAs("Tiff", outputPath + outputFileName);
 	                	close();  // montage
 	                	print("saved montage as " + outputPath + outputFileName);  //to log window
