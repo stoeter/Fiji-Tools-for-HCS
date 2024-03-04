@@ -8,40 +8,40 @@ macroDescription = "This macro reads single CV7000 images of a well as .tif ." +
 	"\nAll z-projection methods selectable. Pixel size can be automatically corrected." +
 	"\nProjection and / or image stack files (to subfolder 'stack') can be saved (can handle stacks larger than 100 (e.g. Z100))." +
 	"\nOption to copy CV7000 meta data files to output folder.";
-macroRelease = "2.0.0_231117";
+macroRelease = "2.0.1_231124";
 macroAuthor = "by Martin Stöter (stoeter(at)mpi-cbg.de)";
 generalHelpURL = "https://github.com/stoeter/Fiji-Tools-for-HCS/wiki";
 macroHelpURL = generalHelpURL + "/" + macroName;
 
 //===== Script Parameters =====
-#@ String  spMacroTitle      (label="<html><font color=#EE1111><em><b>===== Macro CV7000 Z-Projection =====</b></em></font></html>", visibility=MESSAGE, required=false, description="This macro opens CV7000 images of a well-field-channel and does a z projection.\nFiji-Tools-for-HCS by TDS@MPI-CBG, Version 2.0.0_231121") 
-#@ String  spMacroSubTitle   (label="<html><font color=#EE1111><em>----- use mouse-roll-over for help ----- </em></font></html>", visibility=MESSAGE, required=false, description="<html>Essential configuration in <font color=#FF6600>orange</font>. Non-persistet default values in <html><font color=#000077>dark blue</font>.<br>For further help and hints see also in Log window...</html>") 
+#@ String  spMacroTitle      (label="<html><font color=#EE1111><em><b>===== Macro CV7000 Z-Projection =====</b></em></font></html>", visibility=MESSAGE, required=false, description="This macro opens CV7000 images of a well-field-channel and does a Z projection.\nFiji-Tools-for-HCS by TDS@MPI-CBG, Version 2.0.1_231124") 
+#@ String  spMacroSubTitle   (label="<html><font color=#EE1111><em>----- use mouse-roll-over for help ----- </em></font></html>", visibility=MESSAGE, required=false, description="<html>Essential configuration in <font color=#FF6600>orange</font>. Non-persistent default values in <html><font color=#000077>dark blue</font>.<br>For further help and hints see also in Log window...</html>") 
 // image input and output
-#@ String  spInput           (label="<html><b>Select one or multiple CV7000 folders:</b></html>", visibility=MESSAGE, required=false, description="Select CV7000 measurment folder, subfolders are included.\nOutput folder does not need to be specified") 
+#@ String  spInput           (label="<html><b>Select one or multiple CV7000 folders:</b></html>", visibility=MESSAGE, required=false, description="Select CV7000 measurement folder, subfolders are included.\nOutput folder does not need to be specified") 
 #@ File[]  inputPaths        (label="<html><font color=#FF6600>Input folders:</font></html>", style="both", description="For multiple folders hold SHIFT / STRG ...") 
 #@ File    outputPath        (label="<html><font color=#000077>Specific output folder?</font></html>", style="directory", value="", persist=false, description="Not essential. Per default projections will be saved in subfolder 'Zprojection' of selected input folder.\nChange default output folder name selection 'Projection tag' as 'customize own tag'") 
 // image file filter
 #@ String  spImageFileFilter (label="<html><b>Image file filter - Define the files to be processed ...</b></html>", visibility=MESSAGE, required=false, description="This feature helps to shape and filter the file list to obtain a specific set of image files") 
-#@ String  fileExtension     (label="<html><font color=#000077>Files should have this extension:</font></html>", value=".tif", persist=false, description="Enter an image extension (like '.tif') to exclude metadata files") 
-#@ String  spDefineFilter    (label="<html>Define filter for files:</html>", visibility=MESSAGE, required=false, description="Below three consecutive filters can be configured to include or exclude files based on a specific text tag")
-#@ String  filterStrings0    (label="1) Filter this text from file list:", value="", description="Enter text to specify filenames (1)")
+#@ String  fileExtension     (label="<html><font color=#000077>Files should have this extension:</font></html>", value=".tif", persist=false, description="Enter an image extension (like '.tif') to e.g. exclude file types other than CV7000 meta data files") 
+#@ String  spDefineFilter    (label="<html>Define filter for files:</html>", visibility=MESSAGE, required=false, description="Below three consecutive filters can be configured to include or exclude files based on a specific text tags")
+#@ String  filterStrings0    (label="1) Filter this text from file list:", value="", description="Enter text to specify file names (1)")
 #@ String  filterTerms0      (label="<html><font color=#000077>1) Files with text are included/excluded?</font></html>", choices={"no filtering", "include", "exclude"}, persist=false, style="radioButtonHorizontal", description="Choose to include or exclude files with specific text (1)") 
-#@ String  filterStrings1    (label="2) Filter this text from file list:", value="", description="Enter text to specify filenames (2)") 
+#@ String  filterStrings1    (label="2) Filter this text from file list:", value="", description="Enter text to specify file names (2)") 
 #@ String  filterTerms1      (label="<html><font color=#000077>2) Files with text are included/excluded?</font></html>", choices={"no filtering", "include", "exclude"}, persist=false, style="radioButtonHorizontal", description="Choose to include or exclude files with specific text (2)") 
-#@ String  filterStrings2    (label="3) Filter this text from file list:", value="", description="Enter text to specify filenames (3)") 
+#@ String  filterStrings2    (label="3) Filter this text from file list:", value="", description="Enter text to specify file names (3)") 
 #@ String  filterTerms2      (label="<html><font color=#000077>3) Files with text are included/excluded?</font></html>", choices={"no filtering", "include", "exclude"}, persist=false, style="radioButtonHorizontal", description="Choose to include or exclude files with specific text (3)") 
 #@ Boolean displayFileList   (label="<html><font color=#000077>Display the file lists?</font></html>", value=false, persist=false, description="If checked the file lists are displyed at each step of the Image file filter")                      //if check file lists will be displayed
 #@ Boolean displayMetaData   (label="<html><font color=#000077>Display unique values of meta data?</font></html>", value=false, persist=false, description="If checked unique values of meta data from file names (like wells, fields, channel, etc.) are displyed in separate windows")    //if check file lists will be displayed
 //set projection type
-#@ String  spZprojection     (label="<html><b>Z-projection - Define settings ...</b></html>", visibility=MESSAGE, required=false, description="Customize general Z-projection settings, image file list specific settings can be set later...") 
+#@ String  spZprojection     (label="<html><b>Z-projection - Define settings ...</b></html>", visibility=MESSAGE, required=false, description="Customize general Z-projection settings, image file list specific Z-projection settings can be set later...") 
 #@ String  projectionType    (label="Projection type:", choices={"Max Intensity", "Sum Slices", "Average Intensity", "Min Intensity", "Standard Deviation", "Median"}, style="listBox", description="Select mathematical operation per pixel in Z") 
-#@ String  projectionFileTag (label="Projection tag:", choices={"00", "all", "max", "min", "avg", "customize own tag"}, style="listBox", description="Customize file tag for projected image (or stack), e.g. ..Z01.. -> ..Z00.. or -> ..Zall.., or ...") 
-#@ Boolean saveProjection    (label="<html><font color=#000077>Save Z-projection?</font></html>", value=true, persist=false, description="If checked projected file will be saved") 
-#@ Boolean saveStack         (label="<html><font color=#000077>Save Z-stack in subfolder?</font></html>", value=false, persist=false, description="If checked images will be saved as a stack in one file") 
+#@ String  projectionFileTag (label="Projection tag:", choices={"00", "all", "max", "min", "avg", "customize own tag"}, style="listBox", description="Customize file tag for projected image (or stack), e.g. ..Z01.. -> ..Z00.. or -> ..Zall.., or ... customize default output folder name (customize own tag)") 
+#@ Boolean saveProjection    (label="<html><font color=#000077>Save Z-projection?</font></html>", value=true, persist=false, description="If checked projected files will be saved") 
+#@ Boolean saveStack         (label="<html><font color=#000077>Save Z-stack in subfolder?</font></html>", value=false, persist=false, description="If checked images will be saved as a multi-page image stack in one file") 
 //set projection type
 #@ String  spGeneral         (label="<html><b>General settings ...</b></html>", visibility=MESSAGE, required=false, description="Select other general features of the script") 
-#@ Boolean doPixelSizeCorr   (label="<html><font color=#000077>Automatically correct pixel size?</font></html>", value=true, persist=false, description="If checked .mrf file will be read and pixel size will be corrected") 
-#@ Boolean copyMetaDataFiles (label="<html><font color=#000077>Copy CV7000 meta data files?</font></html>", value=false, persist=false, description="If checked meta data files from CV7000, such as .mrf, .mes, correction files, etc., will be copied to output path") 
+#@ Boolean doPixelSizeCorr   (label="<html><font color=#000077>Automatically correct pixel size?</font></html>", value=true, persist=false, description="If checked .mrf file will be read and the pixel size will be corrected") 
+#@ Boolean copyMetaDataFiles (label="<html><font color=#000077>Copy CV7000 meta data files?</font></html>", value=false, persist=false, description="If checked meta data files from CV7000, such as .mrf, .mes, correction files, etc., will be copied to the output path") 
 #@ Boolean batchMode         (label="<html><font color=#000077>Set batch mode (hide images)?</font></html>", value=true, persist=false, description="If checked no images will be displayed while processing") 
 
 //print macro name and current time to Log window
