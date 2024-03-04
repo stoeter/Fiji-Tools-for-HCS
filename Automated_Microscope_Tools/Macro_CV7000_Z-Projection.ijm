@@ -8,7 +8,7 @@ macroDescription = "This macro reads single CV7000 images of a well as .tif ." +
 	"\nAll z-projection methods selectable. Pixel size can be automatically corrected." +
 	"\nProjection and / or image stack files (to subfolder 'stack') can be saved (can handle stacks larger than 100 (e.g. Z100))." +
 	"\nOption to copy CV7000 meta data files to output folder.";
-macroRelease = "2.0.1_231124";
+macroRelease = "2.0.2_240304";
 macroAuthor = "by Martin Stöter (stoeter(at)mpi-cbg.de)";
 generalHelpURL = "https://github.com/stoeter/Fiji-Tools-for-HCS/wiki";
 macroHelpURL = generalHelpURL + "/" + macroName;
@@ -19,7 +19,7 @@ macroHelpURL = generalHelpURL + "/" + macroName;
 // image input and output
 #@ String  spInput           (label="<html><b>Select one or multiple CV7000 folders:</b></html>", visibility=MESSAGE, required=false, description="Select CV7000 measurement folder, subfolders are included.\nOutput folder does not need to be specified") 
 #@ File[]  inputPaths        (label="<html><font color=#FF6600>Input folders:</font></html>", style="both", description="For multiple folders hold SHIFT / STRG ...") 
-#@ File    outputPath        (label="<html><font color=#000077>Specific output folder?</font></html>", style="directory", value="", persist=false, description="Not essential. Per default projections will be saved in subfolder 'Zprojection' of selected input folder.\nChange default output folder name selection 'Projection tag' as 'customize own tag'") 
+#@ File    outputPath        (label="<html><font color=#000077>Specific output folder?</font></html>", style="directory", required=false, persist=false, description="Not essential. Per default projections will be saved in subfolder 'Zprojection' of selected input folder.\nChange default output folder name selection 'Projection tag' as 'customize own tag'") 
 // image file filter
 #@ String  spImageFileFilter (label="<html><b>Image file filter - Define the files to be processed ...</b></html>", visibility=MESSAGE, required=false, description="This feature helps to shape and filter the file list to obtain a specific set of image files") 
 #@ String  fileExtension     (label="<html><font color=#000077>Files should have this extension:</font></html>", value=".tif", persist=false, description="Enter an image extension (like '.tif') to e.g. exclude file types other than CV7000 meta data files") 
@@ -65,8 +65,9 @@ print("In total", inputPaths.length, "folder(s) will be processed...");
 defaultOutputfolderName = "Zprojection";
 // if no selection in script parameters, then it is output path is ImageJ path!?? Set variavle outputPathSelected then to 0, it is 1 when an outputPath was selected
 //print((replace(outputPath + File.separator, File.separator, "/") == replace(getDir("imagej") , File.separator, "/")));
-outputPathSelected = !( replace(outputPath + File.separator, File.separator, "/") == replace(getDir("imagej") , File.separator, "/") );  // cannot compare strings with backslash!???
-print(outputPathSelected);
+//outputPathSelected = !( replace(outputPath + File.separator, File.separator, "/") == replace(getDir("imagej") , File.separator, "/") );  // cannot compare strings with backslash!???
+//if (outputPath == 0) outputPathSelected = false;  // if nothing is selected in GUI then the return value will be 0, not NA or null (see here: https://forum.image.sc/t/issue-with-script-parameter-file-in-fiji-when-not-selected-and-the-getdir-imagej-function/91420)
+//print(outputPathSelected);
 
 //set output projection folder name
 if (projectionFileTag == "customize own tag") { // user defined output folder name
@@ -79,12 +80,13 @@ if (projectionFileTag == "customize own tag") { // user defined output folder na
 	print("Default output folder was set to:", defaultOutputfolderName);
 	}
 					
-if ( (inputPaths.length > 1) || !outputPathSelected ) { // cannot compare strings with backslash!???
+if ( (inputPaths.length > 1) || outputPath == 0 ) {     // if nothing is selected in GUI then the return value of outpuPath will be 0 (see above)
 	print("Selected output path will be ignored and ouput folders will be generated automatically in each input folder");
 	outputPathSelected = false;
 	} else {
 	outputPath = outputPath + File.separator;
 	print("Output path:", outputPath,"");
+	outputPathSelected = true;
 	}
 
 //set log file number
@@ -124,7 +126,7 @@ for (currentFolder = 0; currentFolder < inputPaths.length; currentFolder++) { //
     print("Preparation for folder #" + (currentFolder + 1) + ":", inputPaths[currentFolder]);  //to log window
 
 // if multiple folders are selected or no outputPath was selected (see above) then make default output folder in input folder
-    if (!outputPathSelected ) {  
+    if (!outputPathSelected) {  
         //outputPath = substring(inputPaths[currentFolder], 0, lastIndexOf(inputPaths[currentFolder], File.separator)) + File.separator + "Zprojection" + File.separator;
         outputPath = inputPath + defaultOutputfolderName + File.separator;
         File.makeDirectory(outputPath);
