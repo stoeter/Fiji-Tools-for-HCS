@@ -5,7 +5,7 @@ macroDescription = "This macro reads single .tif images from the chosen folder (
 	"<br>Pre-processing like log transformation, dimension scaling, and background subtraction are applicable." +
 	"<br>StarDist will run on filteed images with adjustable parameters and saves them in StarDist folder of input folder."
 	"<br>Label images or overlays can be exported.";
-macroRelease = "first release 23-10-2024 by Martin Stöter (stoeter(at)mpi-cbg.de)";
+macroRelease = "second release 18-11-2024 by Martin Stöter (stoeter(at)mpi-cbg.de)";
 generalHelpURL = "https://github.com/stoeter/Fiji-Tools-for-HCS/wiki";
 macroHelpURL = generalHelpURL + "/" + macroName;
 macroHtml = "<html>" 
@@ -69,6 +69,9 @@ Dialog.addSlider("Percentile high:", 0.0, 100.0, percentileTopSD);
 Dialog.addMessage("====== NMS Post-processing ======");
 Dialog.addSlider("Probability/Score threshold:", 0.0, 1.0, probThreshSD);
 Dialog.addSlider("Overlap threshold:", 0.0, 1.0, nmsThreshSD);
+Dialog.addMessage("====== Advanced Options ======");
+Dialog.addNumber("Number of tiles:", nTilesSD);
+Dialog.addNumber("Boundary exclusion:", excludeBoundarySD);
 Dialog.addMessage("====== Output settings ======");
 Dialog.addString("StarDist output file tag:", outputFileTag);
 Dialog.addString("Change default output folder name?", defaultOutputfolderName);
@@ -83,10 +86,14 @@ percentileBottomSD = Dialog.getNumber();
 percentileTopSD = Dialog.getNumber();
 probThreshSD = Dialog.getNumber();
 nmsThreshSD = Dialog.getNumber();
+nTilesSD = Dialog.getNumber();
+excludeBoundarySD = Dialog.getNumber();
 outputFileTag = Dialog.getString();
 defaultOutputfolderName = Dialog.getString();
 outputTypeSD = Dialog.getChoice();
-print("log transformation:", doLogTransformation, "; scaling factor:", xyScale, "; subtract Background:", rollingBallRadius, "; StarDist model:", modelSD, "normalization:", normalizationSD, "percentile low:", percentileBottomSD, "percentile high:", percentileTopSD, "probability threshold:", probThreshSD, "overlap threshold:", nmsThreshSD, "output file tag:", outputFileTag, "output folder name", defaultOutputfolderName, "output type", outputTypeSD);
+print("log transformation:", doLogTransformation, "; scaling factor:", xyScale, "; subtract Background:", rollingBallRadius);
+print("StarDist model:", modelSD, "normalization:", normalizationSD, "percentile low:", percentileBottomSD, "percentile high:", percentileTopSD, "probability threshold:", probThreshSD, "overlap threshold:", nmsThreshSD, "tiles:", nTilesSD, "boundary exclusion:", excludeBoundarySD);
+print("output file tag:", outputFileTag, "output folder name", defaultOutputfolderName, "output type", outputTypeSD);
 //print("Default output folder was set to:", defaultOutputfolderName);
 
 // ===== organize output (folder) settings  =====
@@ -125,7 +132,7 @@ fileList = getFileListSubfolder(inputPath, displayFileList);  //read all files i
 fileList = getFileType(fileList, fileExtension, displayFileList);			 //filter for extension
 fileList = getFilteredFileList(fileList, false, displayFileList);    //filter for strings
 
-waitForUser("Do you really want to open " + fileList.length + " files?" + "\n\n" + "Otherwise press 'ESC' and check image list and filter text!");
+//waitForUser("Do you really want to open " + fileList.length + " files?" + "\n\n" + "Otherwise press 'ESC' and check image list and filter text!");
 
 //setBatchMode(batchMode);
 //go through all file
@@ -151,7 +158,7 @@ for (currentFile = 0; currentFile < fileList.length; currentFile++) {
 		imageNameToSD = getTitle();
 		//run("Command From Macro", "command=[de.csbdresden.stardist.StarDist2D], args=['input':'" + imageNameToSD + "', 'modelChoice':'Versatile (fluorescent nuclei)', 'normalizeInput':'true', 'percentileBottom':'1.0', 'percentileTop':'98.8', 'probThresh':'0.05', 'nmsThresh':'0.15', 'outputType':'Both', 'nTiles':'1', 'excludeBoundary':'2', 'roiPosition':'Automatic', 'verbose':'false', 'showCsbdeepProgress':'false', 'showProbAndDist':'false'], process=[false]");
 		//run("Command From Macro", "command=[de.csbdresden.stardist.StarDist2D], args=['input':'" + imageNameToSD + "', 'modelChoice':'Versatile (fluorescent nuclei)', 'normalizeInput':'true', 'percentileBottom':'1.0', 'percentileTop':'98.8', 'probThresh':'0.75', 'nmsThresh':'0.02', 'outputType':'Label Image', 'nTiles':'1', 'excludeBoundary':'2', 'roiPosition':'Automatic', 'verbose':'false', 'showCsbdeepProgress':'false', 'showProbAndDist':'false'], process=[false]");
-		run("Command From Macro", "command=[de.csbdresden.stardist.StarDist2D], args=['input':'" + imageNameToSD + "', 'modelChoice':'" + modelSD + "', 'normalizeInput':'" + normalizationSD + "', 'percentileBottom':'" + percentileBottomSD + "', 'percentileTop':'" + percentileTopSD + "', 'probThresh':'" + probThreshSD + "', 'nmsThresh':'" + nmsThreshSD + "', 'outputType':'" + outputTypeSD + "', 'nTiles':'1', 'excludeBoundary':'2', 'roiPosition':'Automatic', 'verbose':'false', 'showCsbdeepProgress':'false', 'showProbAndDist':'false'], process=[false]");
+		run("Command From Macro", "command=[de.csbdresden.stardist.StarDist2D], args=['input':'" + imageNameToSD + "', 'modelChoice':'" + modelSD + "', 'normalizeInput':'" + normalizationSD + "', 'percentileBottom':'" + percentileBottomSD + "', 'percentileTop':'" + percentileTopSD + "', 'probThresh':'" + probThreshSD + "', 'nmsThresh':'" + nmsThreshSD + "', 'outputType':'" + outputTypeSD + "', 'nTiles':'" + nTilesSD + "', '" + excludeBoundarySD + "':'2', 'roiPosition':'Automatic', 'verbose':'false', 'showCsbdeepProgress':'false', 'showProbAndDist':'false'], process=[false]");
 		if (outputTypeSD == "Both" || outputTypeSD == "Label Image") {
 			selectImage("Label Image");
 			run("Scale...", "width=" + width + " height=" + height  + " interpolation=None average create");
