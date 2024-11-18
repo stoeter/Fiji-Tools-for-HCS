@@ -1,5 +1,5 @@
-//StarDist_with_preproseccing
-macroName = "Macro_StarDist_with_preproseccing";
+//StarDist_With_Preprocessing
+macroName = "Macro_StarDist_With_Preprocessing";
 macroShortDescription = "This macro runs StarDist, but allows several pre-processing steps before-hand.";
 macroDescription = "This macro reads single .tif images from the chosen folder (including subfolders)" +
 	"<br>Pre-processing like log transformation, dimension scaling, and background subtraction are applicable." +
