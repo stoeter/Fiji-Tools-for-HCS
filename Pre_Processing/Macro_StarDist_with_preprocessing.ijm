@@ -5,7 +5,7 @@ macroDescription = "This macro reads single .tif images from the chosen folder (
 	"<br>Pre-processing like log transformation, dimension scaling, and background subtraction are applicable." +
 	"<br>StarDist will run on filteed images with adjustable parameters and saves them in StarDist folder of input folder."
 	"<br>Label images or overlays can be exported.";
-macroRelease = "second release 18-11-2024 by Martin Stöter (stoeter(at)mpi-cbg.de)";
+macroRelease = "Third release 22-04-2025 by Martin Stöter (stoeter(at)mpi-cbg.de)";
 generalHelpURL = "https://github.com/stoeter/Fiji-Tools-for-HCS/wiki";
 macroHelpURL = generalHelpURL + "/" + macroName;
 macroHtml = "<html>" 
@@ -31,10 +31,20 @@ Dialog.addMessage("Fiji macro: " + macroName + " (Fiji-Tools-for-HCS by TDS@MPI-
 Dialog.addHelp(macroHtml);
 Dialog.show;
 
+////////////////////////////////        M A C R O   C O D E         /////////////////////////////// 
+//set array variables
+batchMode = true;
+var fileExtension = ".tif";                                                  //pre-definition of extension
+var filterStrings = newArray("C01.tif","","");                                      //pre-definition of strings to filter
+var availableFilterTerms = newArray("no filtering", "include", "exclude");   //dont change this
+var filterTerms = newArray("include", "no filtering", "no filtering");  //pre-definition of filter types 
+var displayFileList = false;                                                 //shall array window be shown? 
+
 //choose folders
 var inputPath = "";
 var outputPath = "not available"; 
 
+//pre-processing and output settings
 doLogTransformation = false;
 xyScale = 0.5;
 rollingBallRadius = 0;
@@ -42,7 +52,7 @@ outputFileTag = "_label";
 outputFileOverlayTag = "_overlay";
 defaultOutputfolderName = "StarDist";
 
-//	run("Command From Macro", "command=[de.csbdresden.stardist.StarDist2D], args=['input':'" + imageNameToSD + "', 'modelChoice':'Versatile (fluorescent nuclei)', 'normalizeInput':'true', 'percentileBottom':'1.0', 'percentileTop':'98.8', 'probThresh':'0.75', 'nmsThresh':'0.02', 'outputType':'Label Image', 'nTiles':'1', 'excludeBoundary':'2', 'roiPosition':'Automatic', 'verbose':'false', 'showCsbdeepProgress':'false', 'showProbAndDist':'false'], process=[false]");
+//StarDist setting and overlay contrast setting
 modelSD = "Versatile (fluorescent nuclei)";
 normalizationSD = "true";
 percentileBottomSD = 1.00;
@@ -50,13 +60,16 @@ percentileTopSD = 98.80;
 probThreshSD = 0.40;
 nmsThreshSD = 0.15;
 outputTypeSD = "Both";
+overlayMinContrast = 0;
+overlayMaxContrast = 300;
 nTilesSD = 1;
 excludeBoundarySD = 2;
-    
+
+// get path and settings
 inputPath = getDirectory("Choose image folder... ");
 
 Dialog.create("Set StarDist options");
-Dialog.addMessage("====== Input image pre-processing ======");
+Dialog.addMessage("====== Input Image Pre-processing ======");
 Dialog.addCheckbox("Do intensity log transformation?", doLogTransformation);
 Dialog.addNumber("Pre-scaling factor of image", xyScale);
 Dialog.addNumber("Subtract Background? (0 = no bkg. subtraction)", rollingBallRadius);
@@ -69,13 +82,15 @@ Dialog.addSlider("Percentile high:", 0.0, 100.0, percentileTopSD);
 Dialog.addMessage("====== NMS Post-processing ======");
 Dialog.addSlider("Probability/Score threshold:", 0.0, 1.0, probThreshSD);
 Dialog.addSlider("Overlap threshold:", 0.0, 1.0, nmsThreshSD);
-Dialog.addMessage("====== Advanced Options ======");
-Dialog.addNumber("Number of tiles:", nTilesSD);
-Dialog.addNumber("Boundary exclusion:", excludeBoundarySD);
-Dialog.addMessage("====== Output settings ======");
+Dialog.addMessage("====== Output Settings ======");
 Dialog.addString("StarDist output file tag:", outputFileTag);
 Dialog.addString("Change default output folder name?", defaultOutputfolderName);
 Dialog.addChoice("Output type of SD (Both=overlays, Label=label)?", newArray("Label Image", "Both"), outputTypeSD);
+Dialog.addNumber("Option overlay minium contrast:", overlayMinContrast);
+Dialog.addNumber("Option overlay maximum contrast:", overlayMaxContrast);
+Dialog.addMessage("====== Advanced Options ======");
+Dialog.addNumber("Number of tiles:", nTilesSD);
+Dialog.addNumber("Boundary exclusion:", excludeBoundarySD);
 Dialog.show();
 doLogTransformation = Dialog.getCheckbox();
 xyScale = Dialog.getNumber();
@@ -86,15 +101,18 @@ percentileBottomSD = Dialog.getNumber();
 percentileTopSD = Dialog.getNumber();
 probThreshSD = Dialog.getNumber();
 nmsThreshSD = Dialog.getNumber();
-nTilesSD = Dialog.getNumber();
-excludeBoundarySD = Dialog.getNumber();
 outputFileTag = Dialog.getString();
 defaultOutputfolderName = Dialog.getString();
 outputTypeSD = Dialog.getChoice();
-print("log transformation:", doLogTransformation, "; scaling factor:", xyScale, "; subtract Background:", rollingBallRadius);
-print("StarDist model:", modelSD, "normalization:", normalizationSD, "percentile low:", percentileBottomSD, "percentile high:", percentileTopSD, "probability threshold:", probThreshSD, "overlap threshold:", nmsThreshSD, "tiles:", nTilesSD, "boundary exclusion:", excludeBoundarySD);
-print("output file tag:", outputFileTag, "output folder name", defaultOutputfolderName, "output type", outputTypeSD);
-//print("Default output folder was set to:", defaultOutputfolderName);
+overlayMinContrast = Dialog.getNumber();
+overlayMaxContrast = Dialog.getNumber();
+nTilesSD = Dialog.getNumber();
+excludeBoundarySD = Dialog.getNumber();
+
+print("Pre-processing : log transformation:", doLogTransformation, "; scaling factor:", xyScale, "; subtract Background:", rollingBallRadius);
+print("StarDist settings : model:", modelSD, "normalization:", normalizationSD, "percentile low:", percentileBottomSD, "percentile high:", percentileTopSD, "probability threshold:", probThreshSD, "overlap threshold:", nmsThreshSD);
+print("StarDist output settings : output file tag:", outputFileTag, "output folder name:", defaultOutputfolderName, "output type:", outputTypeSD, "number of tiles:", nTilesSD, "boundary exclusion:", excludeBoundarySD);
+print("Overlay output settings : overlay minium contrast:", overlayMinContrast, "overlay maximum contrast:", overlayMaxContrast);
 
 // ===== organize output (folder) settings  =====
 //outputPath = substring(inputPaths[currentFolder], 0, lastIndexOf(inputPaths[currentFolder], File.separator)) + File.separator + "Zprojection" + File.separator;
@@ -117,15 +135,7 @@ run("Input/Output...", "jpeg=95 gif=-1 file=.txt copy_column copy_row save_colum
 //run("Close All");
 run("Color Balance...");
 
-////////////////////////////////        M A C R O   C O D E         /////////////////////////////// 
-//set array variables
-batchMode = true;
-var fileExtension = ".tif";                                                  //pre-definition of extension
-var filterStrings = newArray("C01.tif","","");                                      //pre-definition of strings to filter
-var availableFilterTerms = newArray("no filtering", "include", "exclude");   //dont change this
-var filterTerms = newArray("include", "no filtering", "no filtering");  //pre-definition of filter types 
-var displayFileList = false;                                                 //shall array window be shown? 
-    
+// set filter and process file list
 setDialogImageFileFilter();
 //get file list ALL
 fileList = getFileListSubfolder(inputPath, displayFileList);  //read all files in subfolders
@@ -158,7 +168,7 @@ for (currentFile = 0; currentFile < fileList.length; currentFile++) {
 		imageNameToSD = getTitle();
 		//run("Command From Macro", "command=[de.csbdresden.stardist.StarDist2D], args=['input':'" + imageNameToSD + "', 'modelChoice':'Versatile (fluorescent nuclei)', 'normalizeInput':'true', 'percentileBottom':'1.0', 'percentileTop':'98.8', 'probThresh':'0.05', 'nmsThresh':'0.15', 'outputType':'Both', 'nTiles':'1', 'excludeBoundary':'2', 'roiPosition':'Automatic', 'verbose':'false', 'showCsbdeepProgress':'false', 'showProbAndDist':'false'], process=[false]");
 		//run("Command From Macro", "command=[de.csbdresden.stardist.StarDist2D], args=['input':'" + imageNameToSD + "', 'modelChoice':'Versatile (fluorescent nuclei)', 'normalizeInput':'true', 'percentileBottom':'1.0', 'percentileTop':'98.8', 'probThresh':'0.75', 'nmsThresh':'0.02', 'outputType':'Label Image', 'nTiles':'1', 'excludeBoundary':'2', 'roiPosition':'Automatic', 'verbose':'false', 'showCsbdeepProgress':'false', 'showProbAndDist':'false'], process=[false]");
-		run("Command From Macro", "command=[de.csbdresden.stardist.StarDist2D], args=['input':'" + imageNameToSD + "', 'modelChoice':'" + modelSD + "', 'normalizeInput':'" + normalizationSD + "', 'percentileBottom':'" + percentileBottomSD + "', 'percentileTop':'" + percentileTopSD + "', 'probThresh':'" + probThreshSD + "', 'nmsThresh':'" + nmsThreshSD + "', 'outputType':'" + outputTypeSD + "', 'nTiles':'" + nTilesSD + "', '" + excludeBoundarySD + "':'2', 'roiPosition':'Automatic', 'verbose':'false', 'showCsbdeepProgress':'false', 'showProbAndDist':'false'], process=[false]");
+		run("Command From Macro", "command=[de.csbdresden.stardist.StarDist2D], args=['input':'" + imageNameToSD + "', 'modelChoice':'" + modelSD + "', 'normalizeInput':'" + normalizationSD + "', 'percentileBottom':'" + percentileBottomSD + "', 'percentileTop':'" + percentileTopSD + "', 'probThresh':'" + probThreshSD + "', 'nmsThresh':'" + nmsThreshSD + "', 'outputType':'" + outputTypeSD + "', 'nTiles':'" + nTilesSD + "', 'excludeBoundary':'" + excludeBoundarySD + "', 'roiPosition':'Automatic', 'verbose':'false', 'showCsbdeepProgress':'false', 'showProbAndDist':'false'], process=[false]");
 		if (outputTypeSD == "Both" || outputTypeSD == "Label Image") {
 			selectImage("Label Image");
 			run("Scale...", "width=" + width + " height=" + height  + " interpolation=None average create");
@@ -167,7 +177,7 @@ for (currentFile = 0; currentFile < fileList.length; currentFile++) {
 			}
 		if (outputTypeSD == "Both") {
 			selectWindow(imageNameToSD);
-			setMinAndMax(0, 300);
+			setMinAndMax(overlayMinContrast, overlayMaxContrast);
 			roiManager("Show All");
 			print("save:", outputPath + substring(imageName, 0, lengthOf(imageName) - 4) + outputFileOverlayTag + ".tif");
 			saveAs("Tiff", outputPath + substring(imageName, 0, lengthOf(imageName) - 4) + outputFileOverlayTag + ".tif");	
@@ -179,8 +189,7 @@ for (currentFile = 0; currentFile < fileList.length; currentFile++) {
 		print("file (" + (currentFile + 1) + "/" + fileList.length + "): ", fileList[currentFile], " could not be opened."); 	//if open() error
 		}
 	}		
-
-				
+				
 //print current time to Log window and save log
 getDateAndTime(year, month, dayOfWeek, dayOfMonth, hour, minute, second, msec); month++;
 print("Macro executed successfully.\nEnd:",year+"-"+month+"-"+dayOfMonth+", h"+hour+"-m"+minute+"-s"+second);
