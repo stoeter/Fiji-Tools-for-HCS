@@ -8,7 +8,7 @@ macroDescription = "This macro opens the images as an image sequence." +
 	"<br>- Rolling ball radius for background subtraction can be set. (enter 0 for no background correction)" +
 	"<br>- Enter background value. (Prominence, default = 100)" +
 	"<br>- more help: https://imagej.nih.gov/ij/docs/menus/process.html#find-maxima";
-macroRelease = "second release 18-11-2024 by Martin Stöter (stoeter(at)mpi-cbg.de)";
+macroRelease = "third release 15-05-2025 by Martin Stöter (stoeter(at)mpi-cbg.de)";
 generalHelpURL = "https://github.com/stoeter/Fiji-Tools-for-HCS/wiki";
 macroHelpURL = generalHelpURL + "/" + macroName;
 macroHtml = "<html>" 
@@ -44,8 +44,10 @@ outputPath = inputPath + newFolderName + File.separator;
 
 printPaths = "inputPath = \"" + inputPath + "\";\noutputPath = \"" + outputPath + "\";";
 print(printPaths);
+
+//set log file number
 tempLogFileNumber = 1;
-while (File.exists(outputPath + "Log_temp_" + tempLogFileNumber +".txt")) tempLogFileNumber ++; //find last tempLog file to prevent overwriting of log 
+if(outputPath != "not available") while (File.exists(outputPath + "Log_temp_" + tempLogFileNumber +".txt")) tempLogFileNumber ++; //find last tempLog file to prevent overwriting of log 
 
 //initialize => default settings
 run("Set Measurements...", "area mean standard min integrated median stack display redirect=None decimal=3");
@@ -106,6 +108,8 @@ if (processWellByWell) {
 	} else {
 	wellList = newArray("");	
 	}
+Array.print(wellList);
+saveLog(outputPath + "Log_temp_" + tempLogFileNumber + ".txt");	
 
 //go through all wells
 for (currentWell = 0; currentWell < wellList.length; currentWell++) {   // well by well
@@ -115,6 +119,7 @@ for (currentWell = 0; currentWell < wellList.length; currentWell++) {   // well 
 	// process the images
 	print("opening images...");
 	run("Image Sequence...", "open=" + inputPath + " file=(" + currentRegexString + ") sort");
+	stackName = getTitle();
 	run("Enhance Contrast", "saturated=0.35");
 	numberOfImages = nSlices;
 	// check if file names are too long for subtite in stack
@@ -153,8 +158,11 @@ for (currentWell = 0; currentWell < wellList.length; currentWell++) {   // well 
 		saveAs(outputType, outputPath + newFileName);
 		close();
 		}
+	close(stackName);	
+	collectGarbage();
+	saveLog(outputPath + "Log_temp_" + tempLogFileNumber + ".txt");	
 	}
-close();
+//close();
 
 // debugging or renaming ...
 //outputPath = "Z:\\cv7000images\\021AZ180625A-3tcFISH_20180713_193421\\Zmax\\Fiji-BkgSub\\";
@@ -178,19 +186,33 @@ close();
 	}*/
 
 //print current time to Log window and save log
+collectGarbage();
 getDateAndTime(year, month, dayOfWeek, dayOfMonth, hour, minute, second, msec); month++;
 print("Macro executed successfully.\nEnd:",year+"-"+month+"-"+dayOfMonth+", "+hour+"-"+minute+"-"+second);
-selectWindow("Log");
-saveAs("Text", outputPath + "Log_"+year+"-"+month+"-"+dayOfMonth+", "+hour+"-"+minute+"-"+second+".txt");
-if (File.exists(outputPath + "Log_temp_" + tempLogFileNumber +".txt")) File.delete(outputPath + "Log_temp_" + tempLogFileNumber + ".txt");  //delete current tempLog file 
-
-print("current memory:", parseInt(IJ.currentMemory())/(1024*1024*1024), "GB");
-run("Collect Garbage");
-print("memory after clearing:", parseInt(IJ.currentMemory())/(1024*1024*1024), "GB");
+if(outputPath != "not available") {
+    saveLog(outputPath + "Log_"+year+"-"+month+"-"+dayOfMonth+", "+hour+"-"+minute+"-"+second+".txt");
+    if (File.exists(outputPath + "Log_temp_" + tempLogFileNumber +".txt")) File.delete(outputPath + "Log_temp_" + tempLogFileNumber + ".txt");  //delete current tempLog file 	
+    }
 
 /////////////////////////////////////////////////////////////////////////////////////////////
 ////////                             F U N C T I O N S                          /////////////
 /////////////////////////////////////////////////////////////////////////////////////////////
+//function saves the log window in the given path
+//example: saveLog("C:\\Temp\\Log_temp.txt");
+function saveLog(logPath) {
+if (nImages > 0) currentWindow = getTitle();
+selectWindow("Log");
+saveAs("Text", logPath);
+if (nImages > 0) selectWindow(currentWindow);
+}    // function
+
+//function will run garbage collector and will print used memory before and after
+//example: collectGarbage();
+function collectGarbage() {
+	print("current memory:", parseInt(IJ.currentMemory())/(1024*1024*1024), "GB");
+	run("Collect Garbage");
+	print("memory after clearing:", parseInt(IJ.currentMemory())/(1024*1024*1024), "GB");
+}    // function
 
 //function gets all files from folders and subfolders
 //example: myFileList = getFileListSubfolder("/home/myFolder/", true);
