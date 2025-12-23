@@ -8,7 +8,7 @@ macroDescription = "This macro reads single CV7000 images of a well as .tif ." +
 	"\nAll z-projection methods selectable. Pixel size can be automatically corrected." +
 	"\nProjection and / or image stack files (to subfolder 'stack') can be saved (can handle stacks larger than 100 (e.g. Z100))." +
 	"\nOption to copy CV7000 meta data files to output folder.";
-macroRelease = "2.0.2_240304";
+macroRelease = "2.0.3_251218";
 macroAuthor = "by Martin Stöter (stoeter(at)mpi-cbg.de)";
 generalHelpURL = "https://github.com/stoeter/Fiji-Tools-for-HCS/wiki";
 macroHelpURL = generalHelpURL + "/" + macroName;
@@ -24,11 +24,11 @@ macroHelpURL = generalHelpURL + "/" + macroName;
 #@ String  spImageFileFilter (label="<html><b>Image file filter - Define the files to be processed ...</b></html>", visibility=MESSAGE, required=false, description="This feature helps to shape and filter the file list to obtain a specific set of image files") 
 #@ String  fileExtension     (label="<html><font color=#000077>Files should have this extension:</font></html>", value=".tif", persist=false, description="Enter an image extension (like '.tif') to e.g. exclude file types other than CV7000 meta data files") 
 #@ String  spDefineFilter    (label="<html>Define filter for files:</html>", visibility=MESSAGE, required=false, description="Below three consecutive filters can be configured to include or exclude files based on a specific text tags")
-#@ String  filterStrings0    (label="1) Filter this text from file list:", value="", description="Enter text to specify file names (1)")
+#@ String  filterStrings0    (label="1) Filter this text from file list:", value="", description="Enter text to specify file names (1), e.g for channel: C01.tif")
 #@ String  filterTerms0      (label="<html><font color=#000077>1) Files with text are included/excluded?</font></html>", choices={"no filtering", "include", "exclude"}, persist=false, style="radioButtonHorizontal", description="Choose to include or exclude files with specific text (1)") 
-#@ String  filterStrings1    (label="2) Filter this text from file list:", value="", description="Enter text to specify file names (2)") 
+#@ String  filterStrings1    (label="2) Filter this text from file list:", value="", description="Enter text to specify file names (2), e.g. for well: _C05_") 
 #@ String  filterTerms1      (label="<html><font color=#000077>2) Files with text are included/excluded?</font></html>", choices={"no filtering", "include", "exclude"}, persist=false, style="radioButtonHorizontal", description="Choose to include or exclude files with specific text (2)") 
-#@ String  filterStrings2    (label="3) Filter this text from file list:", value="", description="Enter text to specify file names (3)") 
+#@ String  filterStrings2    (label="3) Filter this text from file list:", value="", description="Enter text to specify file names (3), ...") 
 #@ String  filterTerms2      (label="<html><font color=#000077>3) Files with text are included/excluded?</font></html>", choices={"no filtering", "include", "exclude"}, persist=false, style="radioButtonHorizontal", description="Choose to include or exclude files with specific text (3)") 
 #@ Boolean displayFileList   (label="<html><font color=#000077>Display the file lists?</font></html>", value=false, persist=false, description="If checked the file lists are displyed at each step of the Image file filter")                      //if check file lists will be displayed
 #@ Boolean displayMetaData   (label="<html><font color=#000077>Display unique values of meta data?</font></html>", value=false, persist=false, description="If checked unique values of meta data from file names (like wells, fields, channel, etc.) are displyed in separate windows")    //if check file lists will be displayed
@@ -155,11 +155,13 @@ for (currentFolder = 0; currentFolder < inputPaths.length; currentFolder++) { //
     wellList = getUniqueWellListCV7000(fileList, displayMetaData);
     wellFieldList = getUniqueWellFieldListCV7000(fileList, displayMetaData);
     fieldList = getUniqueFieldListCV7000(fileList, displayMetaData);
+    zPlaneList = getUniqueZplaneListCV7000(fileList, displayMetaData);
     channelList = getUniqueChannelListCV7000(fileList, displayMetaData);
     //print(wellList.length, "wells found\n", wellFieldList.length, "well x fields found\n", fieldList.length, "fields found\n", channelList.length, "channels found\n");
     
     if (currentFolder == 0) { // in first iteration check stack size and options
     	stackSize = fileList.length / wellFieldList.length / channelList.length;
+    	//print("fileList.length, wellFieldList.length, channelList.length", fileList.length, wellFieldList.length, channelList.length);
     	print("Assuming stacks with ", stackSize, "planes. Please check if this is correct!");
 		if (displayFileList || displayMetaData) waitForUser("Take a look at the list windows...");  //give user time to analyse the lists 
     	
@@ -487,6 +489,32 @@ Array.print(returnedChannelList);
 if (displayList) {Array.show("List of " + returnedChannelList.length + " unique channels", returnedChannelList);}	
 return returnedChannelList;
 }
+
+//function returnes the unique z-planes (e.g. Z01) of an array of CV7000 files
+//example: myUniqueZplanes = getUniqueZplaneListCV7000(myList, true);
+function getUniqueZplaneListCV7000(inputArray, displayList) {
+currentZplane = substring(inputArray[0],lastIndexOf(inputArray[0],".tif")-6,lastIndexOf(inputArray[0],".tif")-3);   //first Zplane found
+returnedZplaneList = newArray(currentZplane);     //this list stores all unique Zplanes found and is returned at the end of the function
+for (i = 1; i < inputArray.length; i++) {
+	j = 0;									//counter for returned Zplane list
+	valueUnique = true;						//as long as value was not found in array of unique values
+	while (valueUnique && (returnedZplaneList.length > j)) {   //as long as value was not found in array of unique values and end of array is not reached
+		currentZplane = substring(inputArray[i],lastIndexOf(inputArray[i],".tif")-6,lastIndexOf(inputArray[i],".tif")-3);
+		if(returnedZplaneList[j] == currentZplane) {
+			valueUnique = false;			//if value was found in array of unique values stop while loop
+			} else {
+			j++;
+			}
+		}  //end while
+	if (valueUnique) returnedZplaneList = Array.concat(returnedZplaneList, currentZplane);  //if value was not found in array of unique values add it to the end of the array of unique values
+	}
+print(returnedZplaneList.length + " Zplane(s) found."); 
+Array.sort(returnedZplaneList);
+Array.print(returnedZplaneList);
+if (displayList) {Array.show("List of " + returnedZplaneList.length + " unique Zplanes", returnedZplaneList);}	
+return returnedZplaneList;
+}
+
 
 //function saves the log window in the given path
 //example: saveLog("C:\\Temp\\Log_temp.txt");
