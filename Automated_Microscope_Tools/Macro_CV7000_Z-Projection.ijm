@@ -8,13 +8,13 @@ macroDescription = "This macro reads single CV7000 images of a well as .tif ." +
 	"\nAll z-projection methods selectable. Pixel size can be automatically corrected." +
 	"\nProjection and / or image stack files (to subfolder 'stack') can be saved (can handle stacks larger than 100 (e.g. Z100))." +
 	"\nOption to copy CV7000 meta data files to output folder.";
-macroRelease = "2.0.3_251218";
+macroRelease = "2.0.4_260203";
 macroAuthor = "by Martin Stöter (stoeter(at)mpi-cbg.de)";
 generalHelpURL = "https://github.com/stoeter/Fiji-Tools-for-HCS/wiki";
 macroHelpURL = generalHelpURL + "/" + macroName;
 
 //===== Script Parameters =====
-#@ String  spMacroTitle      (label="<html><font color=#EE1111><em><b>===== Macro CV7000 Z-Projection =====</b></em></font></html>", visibility=MESSAGE, required=false, description="This macro opens CV7000 images of a well-field-channel and does a Z projection.\nFiji-Tools-for-HCS by TDS@MPI-CBG, Version 2.0.1_231124") 
+#@ String  spMacroTitle      (label="<html><font color=#EE1111><em><b>===== Macro CV7000 Z-Projection =====</b></em></font></html>", visibility=MESSAGE, required=false, description="This macro opens CV7000 images of a well-field-channel and does a Z projection.\nFiji-Tools-for-HCS by TDS@MPI-CBG, Version 2.0.4_260203") 
 #@ String  spMacroSubTitle   (label="<html><font color=#EE1111><em>----- use mouse-roll-over for help ----- </em></font></html>", visibility=MESSAGE, required=false, description="<html>Essential configuration in <font color=#FF6600>orange</font>. Non-persistent default values in <html><font color=#000077>dark blue</font>.<br>For further help and hints see also in Log window...</html>") 
 // image input and output
 #@ String  spInput           (label="<html><b>Select one or multiple CV7000 folders:</b></html>", visibility=MESSAGE, required=false, description="Select CV7000 measurement folder, subfolders are included.\nOutput folder does not need to be specified") 
@@ -129,8 +129,12 @@ for (currentFolder = 0; currentFolder < inputPaths.length; currentFolder++) { //
     if (!outputPathSelected) {  
         //outputPath = substring(inputPaths[currentFolder], 0, lastIndexOf(inputPaths[currentFolder], File.separator)) + File.separator + "Zprojection" + File.separator;
         outputPath = inputPath + defaultOutputfolderName + File.separator;
-        File.makeDirectory(outputPath);
-        print("New output folder -> made folder for projection files: " + outputPath);  //to log window
+        if (!File.exists(outputPath)) {
+	        File.makeDirectory(outputPath);
+	        print("New output folder -> made folder for projection files: " + outputPath);  //to log window
+        	} else {
+        	print("Output folder for projection files already exists: " + outputPath);  //to log window	
+        	}
         }
 	saveLog(outputPath + "Log_temp_" + tempLogFileNumber + ".txt");	
 	
@@ -150,7 +154,18 @@ for (currentFolder = 0; currentFolder < inputPaths.length; currentFolder++) { //
     filterStrings = filterStringsUserGUI;                              //restore user enterd strings from "backup variable" 
     filterTerms = filterTermsUserGUI;                                  //restore user enterd terms from "backup variable"
     fileList = getFilteredFileList(fileList, false, displayFileList);    //filter for strings
-    if (fileList.length == 0) exit("No files to process"); 
+    if (fileList.length == 0) {
+    	print("No files to process, folder is skipped...");
+    	//print current time to Log window and save log
+    	getDateAndTime(year, month, dayOfWeek, dayOfMonth, hour, minute, second, msec); month++;
+    	if ((currentFolder + 1 ) < inputPaths.length) {
+        	print("Macro executed successfully for this folder.\nFinished folder:", inputPaths[currentFolder],"at", year+"-"+month+"-"+dayOfMonth+", h"+hour+"-m"+minute+"-s"+second);
+        	} else {
+        	print("Macro executed successfully.\nEnd:",year+"-"+month+"-"+dayOfMonth+", h"+hour+"-m"+minute+"-s"+second);
+        	}
+    	saveLogFinal(logPath, tempLogFileNumber);
+    	continue;
+    	}
     //print("removing correction files from file list containing text", defaultFilterStrings[0], defaultFilterStrings[1], defaultFilterStrings[2]);
     wellList = getUniqueWellListCV7000(fileList, displayMetaData);
     wellFieldList = getUniqueWellFieldListCV7000(fileList, displayMetaData);
@@ -252,11 +267,12 @@ for (currentFolder = 0; currentFolder < inputPaths.length; currentFolder++) { //
         } else {
         print("Macro executed successfully.\nEnd:",year+"-"+month+"-"+dayOfMonth+", h"+hour+"-m"+minute+"-s"+second);
         }
-    selectWindow("Log");
-    if(outputPath != "not available") {
-        saveAs("Text", outputPath + "Log_"+year+"-"+month+"-"+dayOfMonth+", h"+hour+"-m"+minute+"-s"+second+".txt");
-        if (File.exists(outputPath + "Log_temp_" + tempLogFileNumber +".txt")) File.delete(outputPath + "Log_temp_" + tempLogFileNumber + ".txt");  //delete current tempLog file 	
-        }
+    saveLogFinal(outputPath, tempLogFileNumber);
+    //selectWindow("Log");
+    //if(outputPath != "not available") {
+    //    saveAs("Text", outputPath + "Log_"+year+"-"+month+"-"+dayOfMonth+", h"+hour+"-m"+minute+"-s"+second+".txt");
+    //    if (File.exists(outputPath + "Log_temp_" + tempLogFileNumber +".txt")) File.delete(outputPath + "Log_temp_" + tempLogFileNumber + ".txt");  //delete current tempLog file 	
+    //    }
 	} // unitl here processing of multiple folders
 
 /////////////////////////////////////////////////////////////////////////////////////////////
@@ -524,6 +540,21 @@ selectWindow("Log");
 saveAs("Text", logPath);
 if (nImages > 0) selectWindow(currentWindow);
 }
+
+
+//function saves the log window in the given folder and deleted tempLofFile
+//example: saveLogFinal("C:\\Temp\\");
+function saveLogFinal(logPath, tempLogFileNumber) {
+getDateAndTime(year, month, dayOfWeek, dayOfMonth, hour, minute, second, msec); month++;
+if (nImages > 0) currentWindow = getTitle();
+selectWindow("Log");
+if(outputPath != "not available") {
+    saveAs("Text", outputPath + "Log_"+year+"-"+month+"-"+dayOfMonth+", h"+hour+"-m"+minute+"-s"+second+".txt");
+    if (File.exists(outputPath + "Log_temp_" + tempLogFileNumber +".txt")) File.delete(outputPath + "Log_temp_" + tempLogFileNumber + ".txt");  //delete current tempLog file 	
+    }
+if (nImages > 0) selectWindow(currentWindow);
+}
+
 
 //function returns a number in specific string format, e.g 2.5 => 02.500
 //example: myStringNumber = getNumberToString(2.5, 3, 6);
