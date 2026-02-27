@@ -8,7 +8,7 @@ macroDescription = "This macro reads single CV7000 images of a well as .tif ." +
 	"\nAll z-projection methods selectable. Pixel size can be automatically corrected." +
 	"\nProjection and / or image stack files (to subfolder 'stack') can be saved (can handle stacks larger than 100 (e.g. Z100))." +
 	"\nOption to copy CV7000 meta data files to output folder.";
-macroRelease = "2.0.4_260203";
+macroRelease = "2.0.5_260226";
 macroAuthor = "by Martin Stöter (stoeter(at)mpi-cbg.de)";
 generalHelpURL = "https://github.com/stoeter/Fiji-Tools-for-HCS/wiki";
 macroHelpURL = generalHelpURL + "/" + macroName;
@@ -20,6 +20,12 @@ macroHelpURL = generalHelpURL + "/" + macroName;
 #@ String  spInput           (label="<html><b>Select one or multiple CV7000 folders:</b></html>", visibility=MESSAGE, required=false, description="Select CV7000 measurement folder, subfolders are included.\nOutput folder does not need to be specified") 
 #@ File[]  inputPaths        (label="<html><font color=#FF6600>Input folders:</font></html>", style="both", description="For multiple folders hold SHIFT / STRG ...") 
 #@ File    outputPath        (label="<html><font color=#000077>Specific output folder?</font></html>", style="directory", required=false, persist=false, description="Not essential. Per default projections will be saved in subfolder 'Zprojection' of selected input folder.\nChange default output folder name selection 'Projection tag' as 'customize own tag'") 
+//set projection type
+#@ String  spZprojection     (label="<html><b>Z-projection - Define settings ...</b></html>", visibility=MESSAGE, required=false, description="Customize general Z-projection settings, image file list specific Z-projection settings can be set later...") 
+#@ String  projectionType    (label="<html><font color=#FF6600>Projection type:", choices={"Max Intensity", "Sum Slices", "Average Intensity", "Min Intensity", "Standard Deviation", "Median"}, style="listBox", description="Select mathematical operation per pixel in Z") 
+#@ String  projectionFileTag (label="Projection tag:", choices={"00", "all", "max", "min", "avg", "customize own tag"}, style="listBox", description="Customize file tag for projected image (or stack), e.g. ..Z01.. -> ..Z00.. or -> ..Zall.., or ... customize default output folder name (customize own tag)") 
+#@ Boolean saveProjection    (label="<html><font color=#000077>Save Z-projection?</font></html>", value=true, persist=false, description="If checked projected files will be saved") 
+#@ Boolean saveStack         (label="<html><font color=#000077>Save Z-stack in subfolder?</font></html>", value=false, persist=false, description="If checked images will be saved as a multi-page image stack in one file") 
 // image file filter
 #@ String  spImageFileFilter (label="<html><b>Image file filter - Define the files to be processed ...</b></html>", visibility=MESSAGE, required=false, description="This feature helps to shape and filter the file list to obtain a specific set of image files") 
 #@ String  fileExtension     (label="<html><font color=#000077>Files should have this extension:</font></html>", value=".tif", persist=false, description="Enter an image extension (like '.tif') to e.g. exclude file types other than CV7000 meta data files") 
@@ -32,12 +38,6 @@ macroHelpURL = generalHelpURL + "/" + macroName;
 #@ String  filterTerms2      (label="<html><font color=#000077>3) Files with text are included/excluded?</font></html>", choices={"no filtering", "include", "exclude"}, persist=false, style="radioButtonHorizontal", description="Choose to include or exclude files with specific text (3)") 
 #@ Boolean displayFileList   (label="<html><font color=#000077>Display the file lists?</font></html>", value=false, persist=false, description="If checked the file lists are displyed at each step of the Image file filter")                      //if check file lists will be displayed
 #@ Boolean displayMetaData   (label="<html><font color=#000077>Display unique values of meta data?</font></html>", value=false, persist=false, description="If checked unique values of meta data from file names (like wells, fields, channel, etc.) are displyed in separate windows")    //if check file lists will be displayed
-//set projection type
-#@ String  spZprojection     (label="<html><b>Z-projection - Define settings ...</b></html>", visibility=MESSAGE, required=false, description="Customize general Z-projection settings, image file list specific Z-projection settings can be set later...") 
-#@ String  projectionType    (label="Projection type:", choices={"Max Intensity", "Sum Slices", "Average Intensity", "Min Intensity", "Standard Deviation", "Median"}, style="listBox", description="Select mathematical operation per pixel in Z") 
-#@ String  projectionFileTag (label="Projection tag:", choices={"00", "all", "max", "min", "avg", "customize own tag"}, style="listBox", description="Customize file tag for projected image (or stack), e.g. ..Z01.. -> ..Z00.. or -> ..Zall.., or ... customize default output folder name (customize own tag)") 
-#@ Boolean saveProjection    (label="<html><font color=#000077>Save Z-projection?</font></html>", value=true, persist=false, description="If checked projected files will be saved") 
-#@ Boolean saveStack         (label="<html><font color=#000077>Save Z-stack in subfolder?</font></html>", value=false, persist=false, description="If checked images will be saved as a multi-page image stack in one file") 
 //set projection type
 #@ String  spGeneral         (label="<html><b>General settings ...</b></html>", visibility=MESSAGE, required=false, description="Select other general features of the script") 
 #@ Boolean doPixelSizeCorr   (label="<html><font color=#000077>Automatically correct pixel size?</font></html>", value=true, persist=false, description="If checked .mrf file will be read and the pixel size will be corrected") 
@@ -81,7 +81,7 @@ if (projectionFileTag == "customize own tag") { // user defined output folder na
 	}
 					
 if ( (inputPaths.length > 1) || outputPath == 0 ) {     // if nothing is selected in GUI then the return value of outpuPath will be 0 (see above)
-	print("Selected output path will be ignored and ouput folders will be generated automatically in each input folder");
+	print("Selected output path will be ignored and output folders will be generated automatically in each input folder");
 	outputPathSelected = false;
 	} else {
 	outputPath = outputPath + File.separator;
@@ -129,12 +129,8 @@ for (currentFolder = 0; currentFolder < inputPaths.length; currentFolder++) { //
     if (!outputPathSelected) {  
         //outputPath = substring(inputPaths[currentFolder], 0, lastIndexOf(inputPaths[currentFolder], File.separator)) + File.separator + "Zprojection" + File.separator;
         outputPath = inputPath + defaultOutputfolderName + File.separator;
-        if (!File.exists(outputPath)) {
-	        File.makeDirectory(outputPath);
-	        print("New output folder -> made folder for projection files: " + outputPath);  //to log window
-        	} else {
-        	print("Output folder for projection files already exists: " + outputPath);  //to log window	
-        	}
+        File.makeDirectory(outputPath);
+        print("New output folder -> made folder for projection files: " + outputPath);  //to log window
         }
 	saveLog(outputPath + "Log_temp_" + tempLogFileNumber + ".txt");	
 	
@@ -268,11 +264,6 @@ for (currentFolder = 0; currentFolder < inputPaths.length; currentFolder++) { //
         print("Macro executed successfully.\nEnd:",year+"-"+month+"-"+dayOfMonth+", h"+hour+"-m"+minute+"-s"+second);
         }
     saveLogFinal(outputPath, tempLogFileNumber);
-    //selectWindow("Log");
-    //if(outputPath != "not available") {
-    //    saveAs("Text", outputPath + "Log_"+year+"-"+month+"-"+dayOfMonth+", h"+hour+"-m"+minute+"-s"+second+".txt");
-    //    if (File.exists(outputPath + "Log_temp_" + tempLogFileNumber +".txt")) File.delete(outputPath + "Log_temp_" + tempLogFileNumber + ".txt");  //delete current tempLog file 	
-    //    }
 	} // unitl here processing of multiple folders
 
 /////////////////////////////////////////////////////////////////////////////////////////////
