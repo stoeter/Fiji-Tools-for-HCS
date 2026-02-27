@@ -1,5 +1,5 @@
 //CV7000-Z-Projection
-macroName = "CV7000-Image-crop";
+macroName = "CV7000-Image-Crop";
 macroShortDescription = "This macro opens CV7000 images of a well-field-channel and does cropping based on a defined ROI.";
 macroDescription = "This macro reads single CV7000 images of a well as .tif ." +
 	"\nThe chosen folder will be searched for images including subfolders." +
