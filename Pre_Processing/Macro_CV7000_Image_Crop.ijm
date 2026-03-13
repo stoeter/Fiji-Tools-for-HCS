@@ -8,13 +8,13 @@ macroDescription = "This macro reads single CV7000 images of a well as .tif ." +
 	"\nROI dimension and position can be adjusted. Pixel size can be automatically corrected." +
 	"\nCropped images can automatically overwrite and replace the input (raw) data, be saved in a separate folder 'Cropped', or saved with file tag (to be specified)." +
 	"\nOption to copy CV7000 meta data files to output folder.";
-macroRelease = "2.0.0_260226";
+macroRelease = "2.0.1_260304";   // if you update the date and version here also do that in line ~17: #@ String  spMacroTitle 
 macroAuthor = "by Martin Stöter (stoeter(at)mpi-cbg.de)";
 generalHelpURL = "https://github.com/stoeter/Fiji-Tools-for-HCS/wiki";
 macroHelpURL = generalHelpURL + "/" + macroName;
 
 //===== Script Parameters =====
-#@ String  spMacroTitle      (label="<html><font color=#EE1111><em><b>===== Macro CV7000 Image crop =====</b></em></font></html>", visibility=MESSAGE, required=false, description="This macro opens CV7000 images of a well-field-channel and does crops a defined ROI.\nFiji-Tools-for-HCS by TDS@MPI-CBG, Version 2.0.4_260203") 
+#@ String  spMacroTitle      (label="<html><font color=#EE1111><em><b>===== Macro CV7000 Image crop =====</b></em></font></html>", visibility=MESSAGE, required=false, description="This macro opens CV7000 images of a well-field-channel and does crops a defined ROI.\nFiji-Tools-for-HCS by TDS@MPI-CBG, Version 2.0.1_260304") 
 #@ String  spMacroSubTitle   (label="<html><font color=#EE1111><em>----- use mouse-roll-over for help ----- </em></font></html>", visibility=MESSAGE, required=false, description="<html>Essential configuration in <font color=#FF6600>orange</font>. Non-persistent default values in <html><font color=#000077>dark blue</font>.<br>For further help and hints see also in Log window...</html>") 
 // image input and output
 #@ String  spInput           (label="<html><b>Select one or multiple CV7000 folders:</b></html>", visibility=MESSAGE, required=false, description="Select CV7000 measurement folder, subfolders are included.\nOutput folder does not need to be specified") 
@@ -28,6 +28,7 @@ macroHelpURL = generalHelpURL + "/" + macroName;
 #@ Integer cropYpos          (label="<html><font color=#FF6600>Crop ROI y-position (y-pos.):", min=0, max=10000, value=480, description="Specify position of crop ROI = y-coordinate of top left corner of crop ROI")
 #@ String  cropFileTag       (label="Crop tag:", choices={"*NONE*", "_cropped", "_small", "customize own tag"}, style="listBox", description="Customize file tag for cropped image, e.g. *NONE* = as input file, ..._cropped.tif, or _200x200..., or ... customize default output folder name (customize own tag)") 
 #@ Boolean overwriteImage    (label="<html><font color=#000077>Overwrite input image in same folder?</font></html>", value=false, persist=false, description="If checked the input files and raw data will be overwritten in same folder. When unchecked (default) cropped images are saved in a subfolder (Cropped).") 
+#@ Boolean updateMRF         (label="<html><font color=#000077>Update dimensions in .mrf file?</font></html>", value=true, persist=false, description="If checked the input files and raw data will be overwritten in same folder. When unchecked (default) cropped images are saved in a subfolder (Cropped).") 
 // image file filter
 #@ String  spImageFileFilter (label="<html><b>Image file filter - Define the files to be processed ...</b></html>", visibility=MESSAGE, required=false, description="This feature helps to shape and filter the file list to obtain a specific set of image files") 
 #@ String  fileExtension     (label="<html><font color=#000077>Files should have this extension:</font></html>", value=".tif", persist=false, description="Enter an image extension (like '.tif') to e.g. exclude file types other than CV7000 meta data files") 
@@ -203,7 +204,8 @@ for (currentFolder = 0; currentFolder < inputPaths.length; currentFolder++) { //
             filterStrings = newArray(wellFieldList[currentWellField],channelList[currentChannel] + ".tif","");      //pre-definition of strings to filter, add "_" because well strings e.g. A03, L01, C02 can be in file name at other places, e.g ..._A06_T0001F001L01A03Z01C02.tif and ".tif" to excluse well C02 instead of channel C02
             filterTerms = newArray("include", "include", "no filtering");  //pre-definition of filter types 
             wellChannelFileList = getFilteredFileList(fileList, false, false);
-            if (currentWellField == 0) updateMRFfile(inputPath, cropWidth, cropHeight, channelList[currentChannel]);
+            // update .mrf file with newly given image / crop dimensions => with will allow nice and correct display of cropped image in CV7000 software, a copy of the original .mrf file will be saved 
+            if ((currentWellField == 0) & (currentChannel == 0) & (updateMRF)) updateMRFfile(inputPath, cropWidth, cropHeight, channelList[currentChannel]);
             
             //now open all files (wellChannelFileList) that belong to one wellField in one channel
             for (currentFile = 0; currentFile < wellChannelFileList.length; currentFile++) {
@@ -225,13 +227,16 @@ for (currentFolder = 0; currentFolder < inputPaths.length; currentFolder++) { //
 						if (File.exists(outputPath + outputFileName)) {
 							print("\n === WARNING!!! ===\n This file exists:\n", outputPath + outputFileName);
 							print("If you ckeck the box and continue, then ALL the files with the same name will be OVERWRITTEN from here on !!!");
+							print("This applies to all the folder listed here:");
+							for (i = 0; i < inputPaths.length; i++) print(inputPaths[i]);
 							Dialog.create("=== WARNING! ===");
 							Dialog.addMessage("            === WARNING! ===\nDo you really want to overwrite files?", 18, "#ff0000");
 							Dialog.addMessage("Please check also log file....");
+							Dialog.addMessage("Overwrite will apply to all the folders listed in log!");
 							Dialog.addCheckbox("Confirm overwriting files (tick for 'yes')?", false);
 							Dialog.show();
 							doubleCheckOverwriting = !(Dialog.getCheckbox());  // is !true => false if overwriting is confirmed
-							print("Overwriting confirmation was set to:", !doubleCheckOverwriting);  //here if checked !!true => true
+							print("Overwriting confirmation was set to:", !doubleCheckOverwriting, "\n");  //here if checked !!true => true
 							if (doubleCheckOverwriting) {
 								print("EXIT: overwriting was not confirmed!\n Please select not to overwrite in the GUI upon scipt launch or select other than *NONE* file tag.");
 								saveLogFinal(outputPath, tempLogFileNumber);
@@ -249,7 +254,8 @@ for (currentFolder = 0; currentFolder < inputPaths.length; currentFolder++) { //
                 showStatus("processing" + fileList[currentFile]);                
                 } //end for all images per channel	
             //waitForUser("done");	
-            run("Close All");	
+            run("Close All");
+            saveLog(outputPath + "Log_temp_" + tempLogFileNumber + ".txt");
             } //end for all channels in well
         // clear memory
         print("current memory:", parseInt(IJ.currentMemory())/(1024*1024*1024), "GB");
@@ -265,11 +271,12 @@ for (currentFolder = 0; currentFolder < inputPaths.length; currentFolder++) { //
         } else {
         print("Macro executed successfully.\nEnd:",year+"-"+month+"-"+dayOfMonth+", h"+hour+"-m"+minute+"-s"+second);
         }
-        
-    // set byte order again to standard
-	run("Input/Output...", "jpeg=95 gif=-1 file=.txt copy_column copy_row save_column save_row");	    
     saveLogFinal(outputPath, tempLogFileNumber);
 	} // unitl here processing of multiple folders
+
+// set byte order again to standard
+run("Input/Output...", "jpeg=95 gif=-1 file=.txt copy_column copy_row save_column save_row");
+
 
 /////////////////////////////////////////////////////////////////////////////////////////////
 ////////                             F U N C T I O N S                          /////////////
@@ -648,7 +655,24 @@ if (!File.exists(mrfFilePath)) {
 		print("Saving original .mrf file under new name:", mrfFilePathOriginal);
 		File.copy(mrfFilePath, mrfFilePathOriginal);
 		} else {
+		print("\n === WARNING!!! ===\n This file exists:\n", inputPath + mrfFilePathOriginal);	
 		print("Original .mrf file was already saved under new name:", mrfFilePathOriginal);	
+		print("An original .mrf (from CV7000) was found and images may have been processed already!");
+		print("In case of overwriting already processed and cropped images may be accidentally be processed agian!!!");
+		print("Pleasse check the indicated folder before continuing!");
+		Dialog.create("=== WARNING! ===");
+		Dialog.addMessage("            === WARNING! ===\nThe .mrf file has been modified already?", 18, "#ff0000");
+		Dialog.addMessage("Please check also log file....");
+		Dialog.addMessage("An original .mrf (from CV7000) was found and images may have been processed already!");
+		Dialog.addCheckbox("Confirm updating of .mrf file (and potentially overwriting files) (tick for 'yes')?", false);
+		Dialog.show();
+		doubleCheckMRFupdate = !(Dialog.getCheckbox());  // is !true => false if overwriting is confirmed
+		print("Updating .mrf file set to:", !doubleCheckMRFupdate, "\n");  //here if checked !!true => true
+		if (doubleCheckMRFupdate) {
+			print("EXIT: update and continuing processing (potential overwriting) was not confirmed!");
+			saveLogFinal(outputPath, tempLogFileNumber);
+			exit("EXIT: update and continuing processing was not confirmed!\nPlease see log...");
+			}
 		}
 	mrfFile = File.openAsString(mrfFilePath);
 	lines = split(mrfFile,"\n");
@@ -657,23 +681,25 @@ if (!File.exists(mrfFilePath)) {
 	//for (i = 0; i < lines.length; i++) print(lines[i]);
 	// go through each line and fine dimension for each channel
 	for (line = 0; line < lines.length; line++) {
-    	if (matches(lines[line], "(.*bts:Ch=\"" + channelNumber + "\".*)") ) {
+    	//if (matches(lines[line], "(.*bts:Ch=\"" + channelNumber + "\".*)") ) {  // update specific channels for dimension in .mrf file => display in CV7000 is scewed !!! 
+    	if (matches(lines[line], "(.*bts:MeasurementChannel bts:Ch=.*)" ) ) {     // update all channels for dimension in .mrf file => otherwise display in CV7000 is still scewed 
     		//print(lines[line]);
     		splitLines = split(lines[line], "\"");
     		//for (i = 0; i < splitLines.length; i++) print(i, splitLines[i]);
     		print("Original .mrf dimensions for channel", splitLines[1], "are:", splitLines[12] + splitLines[13], "; and", splitLines[14] + splitLines[15]);
-    		print("Croping reduces file size to", d2s((cropWidth * cropHeight) / (splitLines[13] * splitLines[15]) / 100, 2), "%.";
+    		print("Croping reduces file size to", d2s((1 * cropWidth * cropHeight) / (1 * splitLines[13] * splitLines[15]) * 100, 2), "%.");
     		splitLines[13] = cropWidth;
     		splitLines[15] = cropHeight;
     		print("Updated .mrf dimensions for channel", splitLines[1], "are:", splitLines[12] + splitLines[13], "; and", splitLines[14] + splitLines[15]);
     		lines[line] = String.join(splitLines, "\"");
+    		lines[line]  = replace(lines[line], "=\" />", "=\"\" />");  // fix issue with emtpy string not placed into array value by ImageJ: ...bts:ShadingCorrectionSource=" />  => ...bts:ShadingCorrectionSource="" />
     		//print(lines[line]);
     		}  // line matches
 		}  // for each line
-	mrfFile = String.join(lines,"\n");
+	mrfFile = String.join(lines,"\r\n");  // make \r\n as CRLF (cariage return line feed) since this is what CV7000 software needs 
 	File.saveString(mrfFile, mrfFilePath);	
-	print("Updaed and saved the .mrf file ...");
-	}  // if exists
+	print("Updated and saved the .mrf file ...");
+	}  // if exists mrfFilePath
 }  // function
 
 
