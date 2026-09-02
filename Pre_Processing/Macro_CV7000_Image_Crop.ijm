@@ -240,6 +240,7 @@ for (currentFolder = 0; currentFolder < inputPaths.length; currentFolder++) { //
                     		}
 						saveLog(outputPath + "Log_Window_temp_" + tempLogFileNumber + ".txt");
                     	}
+                    outputPathImage = File.directory;	
                     printToLog(logFilePath, false, "opened (" + (currentFile + 1) + "/" + wellChannelFileList.length + "): " + wellChannelFileList[currentFile]);  //to log window
 					outputFileName = substring(currentImage, 0, lengthOf(currentImage) - 4) + cropFileTag + ".tif";   // if cropFileTag == "*NONE*" => cropFileTag = "" means like input file name
                     if (doPixelSizeCorr) correctPixelSize(pixelSizeMrf);   // do pixel size / unit correction		
@@ -266,7 +267,7 @@ for (currentFolder = 0; currentFolder < inputPaths.length; currentFolder++) { //
 								}
 							} // file exists
 						} // double checking overwriting
-					saveAs("Tiff", outputPath + outputFileName);
+					saveAs("Tiff", outputPathImage + outputFileName);
 					printToLog(logFilePath, false, "saved cropped image as " + outputPath + outputFileName);  //to log window			
 					close();              
                     } else {
