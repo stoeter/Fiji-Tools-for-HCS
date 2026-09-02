@@ -8,13 +8,13 @@ macroDescription = "This macro reads single CV7000 images of a well as .tif ." +
 	"\nAll z-projection methods selectable. Pixel size can be automatically corrected." +
 	"\nProjection and / or image stack files (to subfolder 'stack') can be saved (can handle stacks larger than 100 (e.g. Z100))." +
 	"\nOption to copy CV7000 meta data files to output folder.";
-macroRelease = "2.0.5_260312";
+macroRelease = "2.1.0_260515";
 macroAuthor = "by Martin Stöter (stoeter(at)mpi-cbg.de)";
 generalHelpURL = "https://github.com/stoeter/Fiji-Tools-for-HCS/wiki";
 macroHelpURL = generalHelpURL + "/" + macroName;
 
 //===== Script Parameters =====
-#@ String  spMacroTitle      (label="<html><font color=#EE1111><em><b>===== Macro CV7000 Z-Projection =====</b></em></font></html>", visibility=MESSAGE, required=false, description="This macro opens CV7000 images of a well-field-channel and does a Z projection.\nFiji-Tools-for-HCS by TDS@MPI-CBG, Version 2.0.5_260312") 
+#@ String  spMacroTitle      (label="<html><font color=#EE1111><em><b>===== Macro CV7000 Z-Projection =====</b></em></font></html>", visibility=MESSAGE, required=false, description="This macro opens CV7000 images of a well-field-channel and does a Z projection.\nFiji-Tools-for-HCS by TDS@MPI-CBG, Version 2.1.0_260515") 
 #@ String  spMacroSubTitle   (label="<html><font color=#EE1111><em>----- use mouse-roll-over for help ----- </em></font></html>", visibility=MESSAGE, required=false, description="<html>Essential configuration in <font color=#FF6600>orange</font>. Non-persistent default values in <html><font color=#000077>dark blue</font>.<br>For further help and hints see also in Log window...</html>") 
 // image input and output
 #@ String  spInput           (label="<html><b>Select one or multiple CV7000 folders:</b></html>", visibility=MESSAGE, required=false, description="Select CV7000 measurement folder, subfolders are included.\nOutput folder does not need to be specified") 
@@ -160,7 +160,7 @@ for (currentFolder = 0; currentFolder < inputPaths.length; currentFolder++) { //
         	} else {
         	print("Macro executed successfully.\nEnd:",year+"-"+month+"-"+dayOfMonth+", h"+hour+"-m"+minute+"-s"+second);
         	}
-    	saveLogFinal(logPath, tempLogFileNumber);
+    	saveLogFinal(outputPath, tempLogFileNumber);
     	continue;
     	}
     //print("removing correction files from file list containing text", defaultFilterStrings[0], defaultFilterStrings[1], defaultFilterStrings[2]);
@@ -215,7 +215,8 @@ for (currentFolder = 0; currentFolder < inputPaths.length; currentFolder++) { //
             filterTerms = newArray("include", "include", "no filtering");  //pre-definition of filter types 
             wellChannelFileList = getFilteredFileList(fileList, false, false);
             if (saveStack) wellChannelFileList = correctCV7000zPlaneDigitProblem(wellChannelFileList);
-            
+        	if (doPixelSizeCorr) pixelSizeZ = readMESfile(inputPaths[currentFolder], channelList[currentChannel]);  // get Z step size of stack = voxel in Z / pixel size in Z from .mes file (for each channel, e.g. BF and Fluo could be different)
+    
             //now open all files (wellChannelFileList) that belong to one wellField in one channel
             for (currentFile = 0; currentFile < wellChannelFileList.length; currentFile++) {
                 //image sequence & regEx would be possible, but it seems to be slow: run("Image Sequence...", "open=Y:\\correctedimages\\Martin\\150716-wormEmbryo-Gunar-test2x3-lowLaser_20150716_143710\\150716-wormEmbryo-6half-days-old\\ file=(_B03_.*C01) sort");
@@ -224,7 +225,7 @@ for (currentFolder = 0; currentFolder < inputPaths.length; currentFolder++) { //
                     open(wellChannelFileList[currentFile]);
                     currentImage = getTitle();
                     print("opened (" + (currentFile + 1) + "/" + wellChannelFileList.length + "):", wellChannelFileList[currentFile]);  //to log window
-                    if (doPixelSizeCorr) correctPixelSize(pixelSizeMrf);   // do pixel size / unit correction
+                    //if (doPixelSizeCorr) correctPixelSize(pixelSizeMrf);   // do pixel size / unit correction
                     } else {
                     print("file not found (" + (currentFile + 1) + "/" + wellChannelFileList.length + "):", wellChannelFileList[currentFile]);  //to log window
                     }
@@ -234,6 +235,7 @@ for (currentFolder = 0; currentFolder < inputPaths.length; currentFolder++) { //
             //waitForUser("done");	
             if (nImages > 1) {
                 run("Images to Stack", "name=Stack title=[] use");
+                if (doPixelSizeCorr) correctVoxelSize(pixelSizeMrf, pixelSizeZ);   // do voxel size / unit correction
                 outputFileName = substring(currentImage, 0, lengthOf(currentImage) - 9 - zPlaneDigitProblem) + projectionFileTag + substring(currentImage, lengthOf(currentImage) - 7, lengthOf(currentImage));   // this should handle the 2-digit and 3-digit file names
                 //outputFileName = substring(currentImage, 0, lengthOf(currentImage) - 10                    ) + projectionFileTag + substring(currentImage, lengthOf(currentImage) - 7,lengthOf(currentImage)); // here file name is 3 digit  (e.g. Z234)
                 if (saveProjection) {
@@ -572,7 +574,25 @@ if (pixelUnit == "inches") {  // default, but wrong in CV7000 images
 	print("Pixel units:", pixelUnit, "; pixel size and unit will be corrected.");
 	Stack.setXUnit("um");
 	Stack.setYUnit("um");
+	Stack.setZUnit("um");
 	run("Properties...", "channels=1 slices=1 frames=1 pixel_width=" + pixelSizeMrf + " pixel_height=" + pixelSizeMrf + " voxel_depth=1");
+	} else {
+	print("Pixel size was already adapted. No correction will be done. Pixel units and sizes are:", pixelUnit, pixelWidth, pixelHeight);	
+	}
+}
+
+//function detemins the current voixel size and unit of an image and corrects it this the given parameter
+// if pixel size paramweter is <= 0 no correction of pixel size will be done
+//example: correctVoxelSize(pixelSizeMrf)
+function correctVoxelSize(pixelSizeMrf, pixelSizeZ) { 
+if (pixelSizeMrf <= 0) return;
+getPixelSize(pixelUnit, pixelWidth, pixelHeight);
+if (pixelUnit == "inches") {  // default, but wrong in CV7000 images
+    print("Pixel/Voxel units:", pixelUnit, "; pixel/voxel size and unit will be corrected (XY and Z):", pixelSizeMrf, pixelSizeZ);
+	Stack.setXUnit("um");
+	Stack.setYUnit("um");
+	Stack.setZUnit("um");
+	run("Properties...", "channels=1 slices=" + nSlices + " frames=1 pixel_width=" + pixelSizeMrf + " pixel_height=" + pixelSizeMrf + " voxel_depth=" + pixelSizeZ);
 	} else {
 	print("Pixel size was already adapted. No correction will be done. Pixel units and sizes are:", pixelUnit, pixelWidth, pixelHeight);	
 	}
@@ -622,6 +642,55 @@ if (!File.exists(mrfFilePath)) {
 		} else {
 		return pixelSizeMrf;	
 		}
+	}  // if exists
+}  // function
+
+//function reads the CV7000 .mes file and detemins the pixel size
+//example: pixelSizeZ = readMESfile(inputPath)
+function readMESfile(inputPath, channel) { 
+//mesFilePath = inputPath + "MeasurementDetail.mrf";
+for (i = 0; i < CV7000metadataFileList.length; i++) { // try to find .mes file in CV7000metadataFileList
+	if (endsWith(CV7000metadataFileList[i], ".mes")) {
+		print("found .mes file in meta data file list:", CV7000metadataFileList[i]);
+		mesFilePath = CV7000metadataFileList[i];
+		}
+	}
+pixelSizeMes = 0;  // by default initialize value that is given back by this function
+doPixelSizeCorr = true;  // function variable that checks it pixel sizes are unique in .mes, otherwise funtion will return -1 
+// open .mes file and split into line array  
+if (!File.exists(mesFilePath)) {
+	print("Could not find .mes file:", mesFilePath, "\nPixel size could not be determined and is not automatically corrected!");
+    return -1;
+	} else {
+	mesFile = File.openAsString(mesFilePath);
+	lines = split(mesFile,"\n");
+	print("Reading .mes file... length:", mesFile.length, "; lines:", lines.length);
+	// go through each line and fine dimension for each channel
+	for (line = 0; line < lines.length; line++) {
+    	if (matches(lines[line], "(.*3D bts:.*)") ) {
+    		//print("Found Line:", line, lines[line]);
+      		splitLines = split(lines[line], "\"");
+    		//print("Stack size :", splitLines[11]);      		
+    		line++;
+    		//print("Associated Channel:", line, lines[line]);
+      		splitLinesChannel = split(lines[line], "Ch");  // e.g. <bts:Ch>2</bts:Ch>
+      		channelMes = "C0" + substring(splitLinesChannel[1], 1, 2);
+    		//print("Channel is :", channelMes); 
+    		if (channel == channelMes) {
+    			if (pixelSizeMes == 0) {     // on first iteration
+ 		   			pixelSizeMes = splitLines[11];
+ 		   			print("Found for channel", channelMes, "in .mes file first stack Z step:", splitLines[11], "um");
+    				} else {
+    				if (pixelSizeMes != splitLines[11] && doPixelSizeCorr) {     // if multiple pixel sizes or no correction 
+    					print("Multiple Z step sizes in .mes file. Z step is set to 1 (um), but this may be wrong...");
+    					pixelSizeMes = 1;
+    					}
+    				}
+    			//line < lines.length;
+    			}
+    		}  // line matches
+		}  // for each line
+	return pixelSizeMes;	
 	}  // if exists
 }  // function
 
