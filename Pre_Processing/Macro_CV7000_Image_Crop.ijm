@@ -2,24 +2,24 @@
 macroName = "CV7000-Image-Crop";
 macroShortDescription = "This macro opens CV7000 images of a well-field-channel and does cropping based on a defined ROI.";
 macroDescription = "This macro reads single CV7000 images of a well as .tif ." +
-	"\nThe chosen folder will be searched for images including subfolders." +
-	"\nOption to select several input folders for batch processing at end of GUI." +
-	"\nAll images of a unique well, field and channel are opened and cropped for a given ROI." +
-	"\nROI dimension and position can be adjusted. Pixel size can be automatically corrected." +
-	"\nCropped images can automatically overwrite and replace the input (raw) data, be saved in a separate folder 'Cropped', or saved with file tag (to be specified)." +
-	"\nOption to copy CV7000 meta data files to output folder.";
-macroRelease = "2.0.1_260304";   // if you update the date and version here also do that in line ~17: #@ String  spMacroTitle 
+	"\r\nThe chosen folder will be searched for images including subfolders." +
+	"\r\nOption to select several input folders for batch processing at end of GUI." +
+	"\r\nAll images of a unique well, field and channel are opened and cropped for a given ROI." +
+	"\r\nROI dimension and position can be adjusted. Pixel size can be automatically corrected." +
+	"\r\nCropped images can automatically overwrite and replace the input (raw) data, be saved in a separate folder 'Cropped', or saved with file tag (to be specified)." +
+	"\r\nOption to copy CV7000 meta data files to output folder.";
+macroRelease = "2.1.0_26031";   // if you update the date and version here also do that in line ~17: #@ String  spMacroTitle 
 macroAuthor = "by Martin Stöter (stoeter(at)mpi-cbg.de)";
 generalHelpURL = "https://github.com/stoeter/Fiji-Tools-for-HCS/wiki";
 macroHelpURL = generalHelpURL + "/" + macroName;
 
 //===== Script Parameters =====
-#@ String  spMacroTitle      (label="<html><font color=#EE1111><em><b>===== Macro CV7000 Image crop =====</b></em></font></html>", visibility=MESSAGE, required=false, description="This macro opens CV7000 images of a well-field-channel and does crops a defined ROI.\nFiji-Tools-for-HCS by TDS@MPI-CBG, Version 2.0.1_260304") 
+#@ String  spMacroTitle      (label="<html><font color=#EE1111><em><b>===== Macro CV7000 Image crop =====</b></em></font></html>", visibility=MESSAGE, required=false, description="This macro opens CV7000 images of a well-field-channel and does crops a defined ROI.\r\nFiji-Tools-for-HCS by TDS@MPI-CBG, Version 2.1.0_260331") 
 #@ String  spMacroSubTitle   (label="<html><font color=#EE1111><em>----- use mouse-roll-over for help ----- </em></font></html>", visibility=MESSAGE, required=false, description="<html>Essential configuration in <font color=#FF6600>orange</font>. Non-persistent default values in <html><font color=#000077>dark blue</font>.<br>For further help and hints see also in Log window...</html>") 
 // image input and output
-#@ String  spInput           (label="<html><b>Select one or multiple CV7000 folders:</b></html>", visibility=MESSAGE, required=false, description="Select CV7000 measurement folder, subfolders are included.\nOutput folder does not need to be specified") 
+#@ String  spInput           (label="<html><b>Select one or multiple CV7000 folders:</b></html>", visibility=MESSAGE, required=false, description="Select CV7000 measurement folder, subfolders are included.\r\nOutput folder does not need to be specified") 
 #@ File[]  inputPaths        (label="<html><font color=#FF6600>Input folders:</font></html>", style="both", description="For multiple folders hold SHIFT / STRG ...") 
-#@ File    outputPath        (label="<html><font color=#000077>Specific output folder?</font></html>", style="directory", required=false, persist=false, description="Not essential. Per default projections will be saved in subfolder 'Cropped' of selected input folder.\nChange default output folder name selection 'Crop tag' as 'customize own tag'") 
+#@ File    outputPath        (label="<html><font color=#000077>Specific output folder?</font></html>", style="directory", required=false, persist=false, description="Not essential. Per default projections will be saved in subfolder 'Cropped' of selected input folder.\r\nChange default output folder name selection 'Crop tag' as 'customize own tag'") 
 //set crop secific settings
 #@ String  spCrop            (label="<html><b>Cropping - Define settings ...</b></html>", visibility=MESSAGE, required=false, description="Customize ROI cropping settings ...") 
 #@ Integer cropWidth         (label="<html><font color=#FF6600>Crop ROI width (x-dim.):", min=0, max=10000, value=1200, description="Specify width of crop ROI = dimension in x") 
@@ -50,19 +50,23 @@ macroHelpURL = generalHelpURL + "/" + macroName;
 //print macro name and current time to Log window
 getDateAndTime(year, month, dayOfWeek, dayOfMonth, hour, minute, second, msec); month++;
 print("\\Clear");
-print(macroName, "(" + macroRelease + ")", "\nStart:",year + "-" + month + "-" + dayOfMonth + ", h" + hour + "-m" + minute + "-s" + second);
-print(macroDescription);
-print(macroHelpURL);
-print(generalHelpURL);
+logFilePath = 0;        // log file path is not defined at this point and text to print to log will be stored in temp variable tempStoreForPrinting
+var tempStoreForPrinting = ""; 
+tempLogFileNumber = 1;
+printToLog(logFilePath, true, macroName + " (" + macroRelease + ")");
+printToLog(logFilePath, true, "Start:" + year + "-" + month + "-" + dayOfMonth + ", h" + hour + "-m" + minute + "-s" + second);
+printToLog(logFilePath, true, macroDescription);
+printToLog(logFilePath, true, macroHelpURL);
+printToLog(logFilePath, true, generalHelpURL);
 
 // ===== organize oupput folder stttings  =====
-print("\n=== Input / Output settings ===\nInput path(s):");
+printToLog(logFilePath, true, "\r\n=== Input / Output settings ===\r\nInput path(s):");
 for (i = 0; i < inputPaths.length; i++) {
 	inputPaths[i] = inputPaths[i] + File.separator;
-	print(inputPaths[i]);
+	printToLog(logFilePath, true, inputPaths[i]);
 }
 //Array.show(inputPaths);
-print("In total", inputPaths.length, "folder(s) will be processed...");
+printToLog(logFilePath, true, "In total " + inputPaths.length + " folder(s) will be processed...");
 
 // ===== organize output (folder) settings  =====
 defaultOutputfolderName = "Cropped";
@@ -80,18 +84,9 @@ if (cropFileTag == "customize own tag") { // user defined output folder name
 	Dialog.show();
 	cropFileTag = Dialog.getString();
 	defaultOutputfolderName = Dialog.getString();
-	print("Default output folder was set to:", defaultOutputfolderName);
+	printToLog(logFilePath, true, "Default output folder was set to: " + defaultOutputfolderName);
 	} 
 if (cropFileTag == "*NONE*") cropFileTag = "";
-
-if ( (inputPaths.length > 1) || outputPath == 0 ) {     // if nothing is selected in GUI then the return value of outpuPath will be 0 (see above)
-	print("Selected output path will be ignored and output folders will be generated automatically in each input folder");
-	outputPathSelected = false;
-	} else {
-	outputPath = outputPath + File.separator;
-	print("Output path:", outputPath, "");
-	outputPathSelected = true;
-	}
 
 //initialize => default settings
 run("Set Measurements...", "area mean standard min centroid center shape integrated median display redirect=None decimal=3");
@@ -105,11 +100,11 @@ run("Close All");
 //set variables
 var CV7000metadataFileList = newArray(0);                                     //initialize - list of files (metadata forom CV7000) that will be copied to outoutPath
 doubleCheckOverwriting = 1;
-
+	
 //set array variables
 var defaultFilterStrings = newArray("DC_sCMOS #","SC_BP","");
-print("\nFiles (images) containing these strings will be automatically filtered out:");
-Array.print(defaultFilterStrings);                                               //pre-definition of extension
+printToLog(logFilePath, true, "\r\nFiles (images) containing these strings will be automatically filtered out:");
+printArrayToLog(logFilePath, true, defaultFilterStrings);                                               //pre-definition of extension
 var filterStrings = newArray(filterStrings0, filterStrings1, filterStrings2);     // get variable settings from script parameter GUI
 var availableFilterTerms = newArray("no filtering", "include", "exclude");    //dont change this
 var filterTerms = newArray(filterTerms0, filterTerms1, filterTerms2);         // get variable settings from script parameter GUI
@@ -118,33 +113,54 @@ var filterTerms = newArray(filterTerms0, filterTerms1, filterTerms2);         //
 filterStringsUserGUI = filterStrings;                                        //store strings that user enterd in "backup variable" 
 filterTermsUserGUI = filterTerms;                                            //store terms that user enterd in "backup variable" 
 
-print("Image file filter:", filterTerms[0],filterStrings[0] + ";",filterTerms[1],filterStrings[1] + ";",filterTerms[2],filterStrings[2]);
+printArrayToLog(logFilePath, true, newArray("Image file filter:", filterTerms[0], filterStrings[0] + ";", filterTerms[1], filterStrings[1] + ";", filterTerms[2], filterStrings[2]));
 
 // start looping over all folders
 for (currentFolder = 0; currentFolder < inputPaths.length; currentFolder++) { // folder by folder
     inputPath = inputPaths[currentFolder];   // need to create static variable here from current array value, because a funtion (getFileListSubfolder) need to check against this global variable
-	print("\n================== starting processing folder #" + (currentFolder + 1) + "... ====================");
-    print("Preparation for folder #" + (currentFolder + 1) + ":", inputPaths[currentFolder]);  //to log window
+	logFilePath = 0;                         // log file path may depende on inputPath and should be unkown at this stage (except for first iteration and outputPathSelected, however still it is not set yet)
+	printToLog(logFilePath, true, "\r\n================== starting processing folder #" + (currentFolder + 1) + "... ====================");
+    printToLog(logFilePath, true, "Preparation for folder #" + (currentFolder + 1) + ": " + inputPaths[currentFolder]);  //to log window
 
-// if multiple folders are selected or no outputPath was selected (see above) then make default output folder in input folder
-    if (!outputPathSelected) {  
-        if (overwriteImage) {
-        	print("Output folder = input folder -> possible overwriting of files (!) ... ");  //to log window
-        	outputPath = 0;      // outputPath not know at this stage (only later when tif is opened), therefore set it o 0, if nothing is selected in GUI then the return value of outpuPath will be 0 (see above)
-        	} else {
-	        //outputPath = substring(inputPaths[currentFolder], 0, lastIndexOf(inputPaths[currentFolder], File.separator)) + File.separator + "Zprojection" + File.separator;
-	        outputPath = inputPath + defaultOutputfolderName + File.separator;
-	        File.makeDirectory(outputPath);
-	        print("New output folder -> made folder for cropped files: " + outputPath);  //to log window
-	        }
-    	}
-        
+	if ( (inputPaths.length > 1) || outputPath == 0 ) {     // if nothing is selected in GUI then the return value of outpuPath will be 0 (see above)
+		printToLog(logFilePath, true, "Selected output path will be ignored and output folders will be generated automatically in each input folder");
+		outputPathSelected = false;
+		// if multiple folders are selected or no outputPath was selected (see above) then make default output folder in input folder
+    	if ( !overwriteImage ) {       // if user defined outputpath (see above) and no overwriting
+    		//outputPath = substring(inputPaths[currentFolder], 0, lastIndexOf(inputPaths[currentFolder], File.separator)) + File.separator + "Zprojection" + File.separator;
+		    outputPath = inputPath + defaultOutputfolderName + File.separator;
+		    File.makeDirectory(outputPath);
+			printToLog(logFilePath, true, "New output folder -> made folder for cropped files: " + outputPath);  //to log window
+    		} else {
+    		outputPath = 0;      // should be 0 anyway in first iteration, but must set back to 0 for next iteration if overwriting (=outputPath noy known at this point)
+      		outputPath = 0;      // outputPath not know at this stage (only later when tif is opened), therefore set it o 0, if nothing is selected in GUI then the return value of outpuPath will be 0 (see above)
+    		printToLog(logFilePath, true, "Output folder = input folder -> possible overwriting of files (!) ... ");  //to log window
+    		}
+		} else {
+		outputPathSelected = true;	
+		outputPath = outputPath + File.separator;
+		printToLog(logFilePath, true, "Output path: " + outputPath);
+		//logFilePath = outputPath + "Log_File_"+year+"-"+month+"-"+dayOfMonth+", h"+hour+"-m"+minute+"-s"+second+".txt";   // Log_File_... stores all the file opening and saving details, mpre specific, saved after every line
+		//printToLog(logFilePath, true, "Output path: " + outputPath);
+		//printToLog(logFilePath, true, "Log file path is : " + logFilePath);
+		//while (File.exists(outputPath + "Log_temp_" + tempLogFileNumber +".txt")) tempLogFileNumber ++; //find last tempLog file to prevent overwriting of log 
+		//saveLog(outputPath + "Log_Window_temp_" + tempLogFileNumber + ".txt");printToLog(logFilePath, true, "New output folder -> made folder for cropped files: " + outputPath);  //to log window
+		}
+
+    if (outputPath != 0) {  // make logFilePath and save log window
+	    logFilePath = outputPath + "Log_File_"+year+"-"+month+"-"+dayOfMonth+", h"+hour+"-m"+minute+"-s"+second+".txt";   // Log_File_... stores all the file opening and saving details, mpre specific, saved after every line
+	    printToLog(logFilePath, true, "Log file path is : " + logFilePath);
+	    while (File.exists(outputPath + "Log_Window_temp_" + tempLogFileNumber +".txt")) tempLogFileNumber ++; //find last tempLog file to prevent overwriting of log 
+		saveLog(outputPath + "Log_Window_temp_" + tempLogFileNumber + ".txt");
+		}
 	//set log file number
-	tempLogFileNumber = 1;
-	if(outputPath != "not available") while (File.exists(outputPath + "Log_temp_" + tempLogFileNumber +".txt")) tempLogFileNumber ++; //find last tempLog file to prevent overwriting of log 
-	saveLog(outputPath + "Log_temp_" + tempLogFileNumber + ".txt");	
-	
-	print("Processing file list...");
+	//if(outputPath != 0) while (File.exists(outputPath + "Log_temp_" + tempLogFileNumber +".txt")) tempLogFileNumber ++; //find last tempLog file to prevent overwriting of log 
+	//logFilePath = outputPath + "Log_File_"+year+"-"+month+"-"+dayOfMonth+", h"+hour+"-m"+minute+"-s"+second+".txt";   // Log_File_... stores all the file opening and saving details, mpre specific, saved after every line
+	//printToLog(logFilePath, true, "Log file path is : " + logFilePath);
+	//saveLog(outputPath + "Log_Window_temp_" + tempLogFileNumber + ".txt");	                                           // Log_Window_... stores all the print commands from Log window and is saved from time to time (as temp), more general
+	//printArrayToLog(logFilePath, true, newArray(macroName, "(" + macroRelease + ")", "Start:", year + "-" + month + "-" + dayOfMonth + ", h" + hour + "-m" + minute + "-s" + second));
+
+	printToLog(logFilePath, true, "Processing file list...");
 
 	// for multiple folders from second iteration on the several lists need to be updated/reseted for next iteration, like fileList, CV7000metadataFileList, well/field/channelList, filterStrings/Terms(user/GUI variables)
     if (currentFolder > 0)  {                         // dont do on first iteration: from second iteration on, get file list from new folder
@@ -161,44 +177,44 @@ for (currentFolder = 0; currentFolder < inputPaths.length; currentFolder++) { //
     filterTerms = filterTermsUserGUI;                                  //restore user enterd terms from "backup variable"
     fileList = getFilteredFileList(fileList, false, displayFileList);    //filter for strings
     if (fileList.length == 0) {
-    	print("No files to process, folder is skipped...");
+    	printToLog(logFilePath, true, "No files to process, folder is skipped...");
     	//print current time to Log window and save log
     	getDateAndTime(year, month, dayOfWeek, dayOfMonth, hour, minute, second, msec); month++;
     	if ((currentFolder + 1 ) < inputPaths.length) {
-        	print("Macro executed successfully for this folder.\nFinished folder:", inputPaths[currentFolder],"at", year+"-"+month+"-"+dayOfMonth+", h"+hour+"-m"+minute+"-s"+second);
+        	printToLog(logFilePath, true, "Macro executed successfully for this folder.\r\nFinished folder: " + inputPaths[currentFolder] +" at " + year+"-"+month+"-"+dayOfMonth+", h"+hour+"-m"+minute+"-s"+second);
         	} else {
-        	print("Macro executed successfully.\nEnd:",year+"-"+month+"-"+dayOfMonth+", h"+hour+"-m"+minute+"-s"+second);
+        	printToLog(logFilePath, true, "Macro executed successfully.\r\nEnd: " + year+"-"+month+"-"+dayOfMonth+", h"+hour+"-m"+minute+"-s"+second);
         	}
     	saveLogFinal(logPath, tempLogFileNumber);
     	continue;
     	}
-    //print("removing correction files from file list containing text", defaultFilterStrings[0], defaultFilterStrings[1], defaultFilterStrings[2]);
+    //printToLog(logFilePath, true, "removing correction files from file list containing text", defaultFilterStrings[0], defaultFilterStrings[1], defaultFilterStrings[2]);
     wellList = getUniqueWellListCV7000(fileList, displayMetaData);
     wellFieldList = getUniqueWellFieldListCV7000(fileList, displayMetaData);
     fieldList = getUniqueFieldListCV7000(fileList, displayMetaData);
     zPlaneList = getUniqueZplaneListCV7000(fileList, displayMetaData);
     channelList = getUniqueChannelListCV7000(fileList, displayMetaData);
-    //print(wellList.length, "wells found\n", wellFieldList.length, "well x fields found\n", fieldList.length, "fields found\n", channelList.length, "channels found\n");
+    //printToLog(logFilePath, true, wellList.length, "wells found\r\n", wellFieldList.length, "well x fields found\r\n", fieldList.length, "fields found\r\n", channelList.length, "channels found\r\n");
     
     if (currentFolder == 0) { // in first iteration check stack size and options
-    	//print("fileList.length, wellFieldList.length, channelList.length", fileList.length, wellFieldList.length, channelList.length);
+    	//printToLog(logFilePath, true, "fileList.length, wellFieldList.length, channelList.length", fileList.length, wellFieldList.length, channelList.length);
 		if (displayFileList || displayMetaData) waitForUser("Take a look at the list windows...");  //give user time to analyse the lists 
     	}
 
-    print("Overwriting input images (0=false, 1=true):", overwriteImage, "copy CV700 meta data files:", copyMetaDataFiles, "using file tag:", cropFileTag);
-	//print(outputPath);
-	//saveLog(outputPath + "Log_temp_" + tempLogFileNumber + ".txt"); 
+    printToLog(logFilePath, true, "Overwriting input images (0=false, 1=true): " + overwriteImage + " copy CV700 meta data files: " + copyMetaDataFiles + " using file tag: " + cropFileTag);
+	//printToLog(logFilePath, true, outputPath);
+	//saveLog(outputPath + "Log_Window_temp_" + tempLogFileNumber + ".txt"); 
 
     if (doPixelSizeCorr) pixelSizeMrf = readMRFfile(inputPaths[currentFolder]);  // get pixel size from .mrf file
 
-    print("\n===== starting processing files... =====");
+    printToLog(logFilePath, true, "\r\n===== starting processing files... =====");
     setBatchMode(batchMode);
-	print("Input path is:", inputPaths[currentFolder]);
+	printToLog(logFilePath, true, "Input path is: " + inputPaths[currentFolder]);
     if (copyMetaDataFiles) copyFiles(CV7000metadataFileList, outputPath);
 
     //go through all files
     for (currentWellField = 0; currentWellField < wellFieldList.length; currentWellField++) {   // well by well
-    print("well-field (" + (currentWellField + 1) + "/" + wellFieldList.length + ") ...");  //to log window
+    printToLog(logFilePath, true, "well-field (" + (currentWellField + 1) + "/" + wellFieldList.length + ") ...");  //to log window
         for (currentChannel = 0; currentChannel < channelList.length; currentChannel++) {  // channel by channel per well
             //define new filters and filter file list for currentWell and currentChannel
             filterStrings = newArray(wellFieldList[currentWellField],channelList[currentChannel] + ".tif","");      //pre-definition of strings to filter, add "_" because well strings e.g. A03, L01, C02 can be in file name at other places, e.g ..._A06_T0001F001L01A03Z01C02.tif and ".tif" to excluse well C02 instead of channel C02
@@ -214,62 +230,68 @@ for (currentFolder = 0; currentFolder < inputPaths.length; currentFolder++) { //
                 if (File.exists(wellChannelFileList[currentFile])) {
                     open(wellChannelFileList[currentFile]);
                     currentImage = getTitle();                    
-                    print("opened (" + (currentFile + 1) + "/" + wellChannelFileList.length + "):", wellChannelFileList[currentFile]);  //to log window
-                    if (!outputPathSelected & overwriteImage) {
-                    	//print(File.directory);
-                    	outputPath = File.directory;
+                    if (currentWellField + currentChannel + currentFile == 0) {  // only on first file of input folder get output path
+                    	if ((outputPath == 0) & overwriteImage) {
+                    		//printToLog(logFilePath, true, File.directory);
+                    		outputPath = File.directory;
+                    		while (File.exists(outputPath + "Log_temp_" + tempLogFileNumber +".txt")) tempLogFileNumber ++; //find last tempLog file to prevent overwriting of log 
+							logFilePath = outputPath + "Log_File_"+year+"-"+month+"-"+dayOfMonth+", h"+hour+"-m"+minute+"-s"+second+".txt";   // Log_File_... stores all the file opening and saving details, mpre specific, saved after every line
+							printToLog(logFilePath, true, "Log file path is : " + logFilePath);
+                    		}
+						saveLog(outputPath + "Log_Window_temp_" + tempLogFileNumber + ".txt");
                     	}
-                    outputFileName = substring(currentImage, 0, lengthOf(currentImage) - 4) + cropFileTag + ".tif";   // if cropFileTag == "*NONE*" => cropFileTag = "" means like input file name
+                    printToLog(logFilePath, false, "opened (" + (currentFile + 1) + "/" + wellChannelFileList.length + "): " + wellChannelFileList[currentFile]);  //to log window
+					outputFileName = substring(currentImage, 0, lengthOf(currentImage) - 4) + cropFileTag + ".tif";   // if cropFileTag == "*NONE*" => cropFileTag = "" means like input file name
                     if (doPixelSizeCorr) correctPixelSize(pixelSizeMrf);   // do pixel size / unit correction		
 					run("Specify...", "width=" + cropWidth + " height=" + cropHeight + " x=" + cropXpos+ " y=" + cropYpos);
 					run("Crop");
 					if (doubleCheckOverwriting) {     // default and intiallysed as 1 = true; safety rule, before overwriting for the first time, as the user for confirmation on all subsequent files and folders 
 						if (File.exists(outputPath + outputFileName)) {
-							print("\n === WARNING!!! ===\n This file exists:\n", outputPath + outputFileName);
-							print("If you ckeck the box and continue, then ALL the files with the same name will be OVERWRITTEN from here on !!!");
-							print("This applies to all the folder listed here:");
-							for (i = 0; i < inputPaths.length; i++) print(inputPaths[i]);
+							printToLog(logFilePath, true, "\r\n === WARNING!!! ===\r\nThis file exists:\r\n" + outputPath + outputFileName);
+							printToLog(logFilePath, true, "If you ckeck the box and continue, then ALL the files with the same name will be OVERWRITTEN from here on !!!");
+							printToLog(logFilePath, true, "This applies to all the folder listed here:");
+							for (i = 0; i < inputPaths.length; i++) printToLog(logFilePath, true, inputPaths[i]);
 							Dialog.create("=== WARNING! ===");
-							Dialog.addMessage("            === WARNING! ===\nDo you really want to overwrite files?", 18, "#ff0000");
+							Dialog.addMessage("            === WARNING! ===\r\nDo you really want to overwrite files?", 18, "#ff0000");
 							Dialog.addMessage("Please check also log file....");
 							Dialog.addMessage("Overwrite will apply to all the folders listed in log!");
 							Dialog.addCheckbox("Confirm overwriting files (tick for 'yes')?", false);
 							Dialog.show();
 							doubleCheckOverwriting = !(Dialog.getCheckbox());  // is !true => false if overwriting is confirmed
-							print("Overwriting confirmation was set to:", !doubleCheckOverwriting, "\n");  //here if checked !!true => true
+							printToLog(logFilePath, true, "Overwriting confirmation was set to: " + !doubleCheckOverwriting + "\r\n");  //here if checked !!true => true
 							if (doubleCheckOverwriting) {
-								print("EXIT: overwriting was not confirmed!\n Please select not to overwrite in the GUI upon scipt launch or select other than *NONE* file tag.");
+								printToLog(logFilePath, true, "EXIT: overwriting was not confirmed!\r\n Please select not to overwrite in the GUI upon scipt launch or select other than *NONE* file tag.");
 								saveLogFinal(outputPath, tempLogFileNumber);
-								exit("EXIT: overwriting was not confirmed!\nPlease see log...");
+								exit("EXIT: overwriting was not confirmed!\r\nPlease see log...");
 								}
 							} // file exists
 						} // double checking overwriting
 					saveAs("Tiff", outputPath + outputFileName);
-					print("saved cropped image as " + outputPath + outputFileName);  //to log window			
+					printToLog(logFilePath, false, "saved cropped image as " + outputPath + outputFileName);  //to log window			
 					close();              
                     } else {
-                    print("file not found (" + (currentFile + 1) + "/" + wellChannelFileList.length + "):", wellChannelFileList[currentFile]);  //to log window
+                    printToLog(logFilePath, true, "file not found (" + (currentFile + 1) + "/" + wellChannelFileList.length + "): " + wellChannelFileList[currentFile]);  //to log window
                     } //end for all images per wellField	
                 showProgress(currentFile / wellChannelFileList.length);
                 showStatus("processing" + fileList[currentFile]);                
                 } //end for all images per channel	
             //waitForUser("done");	
             run("Close All");
-            saveLog(outputPath + "Log_temp_" + tempLogFileNumber + ".txt");
+            //saveLog(outputPath + "Log_Window_temp_" + tempLogFileNumber + ".txt"); //dont save log window anymore for every channel
             } //end for all channels in well
         // clear memory
-        print("current memory:", parseInt(IJ.currentMemory())/(1024*1024*1024), "GB");
+        printToLog(logFilePath, true, "current memory: " + parseInt(IJ.currentMemory())/(1024*1024*1024) + "GB");
         run("Collect Garbage");
-        print("memory after clearing:", parseInt(IJ.currentMemory())/(1024*1024*1024), "GB");
-        saveLog(outputPath + "Log_temp_" + tempLogFileNumber + ".txt");
+        printToLog(logFilePath, true, "memory after clearing: " + parseInt(IJ.currentMemory())/(1024*1024*1024) + "GB");
+        //saveLog(outputPath + "Log_Window_temp_" + tempLogFileNumber + ".txt");  //dont save log window anymore for every well
         }  //end for all wells
                 
     //print current time to Log window and save log
     getDateAndTime(year, month, dayOfWeek, dayOfMonth, hour, minute, second, msec); month++;
     if ((currentFolder + 1 ) < inputPaths.length) {
-        print("Macro executed successfully for this folder.\nFinished folder:", inputPaths[currentFolder],"at", year+"-"+month+"-"+dayOfMonth+", h"+hour+"-m"+minute+"-s"+second);
+        printToLog(logFilePath, true, "Macro executed successfully for this folder.\r\nFinished folder: " + inputPaths[currentFolder] + " at " + year+"-"+month+"-"+dayOfMonth+", h"+hour+"-m"+minute+"-s"+second);
         } else {
-        print("Macro executed successfully.\nEnd:",year+"-"+month+"-"+dayOfMonth+", h"+hour+"-m"+minute+"-s"+second);
+        printToLog(logFilePath, true, "Macro executed successfully.\r\nEnd: " + year+"-"+month+"-"+dayOfMonth+", h"+hour+"-m"+minute+"-s"+second);
         }
     saveLogFinal(outputPath, tempLogFileNumber);
 	} // unitl here processing of multiple folders
@@ -300,7 +322,7 @@ for (i = 0; i < filterStrings.length; i++) {
 			if (filterTerms[i] == "include" && indexOf(fileListFunction[j],filterStrings[i]) != -1) returnedFileList = Array.concat(returnedFileList,fileListFunction[j]);
 			if (filterTerms[i] == "exclude" && indexOf(fileListFunction[j],filterStrings[i]) <= 0) returnedFileList = Array.concat(returnedFileList,fileListFunction[j]);
 			}
-		print(returnedFileList.length + " file(s) found after filter: " + filterTerms[i] + " text " + filterStrings[i] + "."); 
+		printToLog(logFilePath, true, "" + returnedFileList.length + " file(s) found after filter : " + filterTerms[i] + " text " + filterStrings[i] + "."); 
 		if (displayList) {Array.show("List of files - after filtering for " + filterStrings[i], returnedFileList);}
 		//see description above! default: filterOnInputList = false
 		if(!filterOnInputList) fileListFunction = returnedFileList; 
@@ -330,7 +352,7 @@ for (i=0; i < fileListFunction.length; i++) {
 		}
 	}
 if(inputPathFunction == inputPath) { //if local variable is equal to global path variable = if path is folder and NOT subfolder
-	print(returnedFileList.length + " file(s) found in selected folder and subfolders."); 	
+	printToLog(logFilePath, true, "" + returnedFileList.length + " file(s) found in selected folder and subfolders."); 	
 	if (displayList) {Array.show("All files - all",returnedFileList);} 	
 	}
 return returnedFileList;
@@ -347,7 +369,7 @@ if (lengthOf(fileExtension) > 0) {
 			if (indexOf(fileListFunction[i], defaultFilterStrings[0]) > 0 ||   // is "DC_sCMOS #"
 				indexOf(fileListFunction[i], defaultFilterStrings[1]) > 0) {   // is "SC_BP"
 				CV7000metadataFileList = Array.concat(CV7000metadataFileList, fileListFunction[i]);	
-				print("Added " + fileListFunction[i] + " to CV7000 meta data file list");
+				printToLog(logFilePath, true, "Added " + fileListFunction[i] + " to CV7000 meta data file list");
 				} else {
 				returnedFileList = Array.concat(returnedFileList, fileListFunction[i]);
 				}
@@ -362,12 +384,12 @@ if (lengthOf(fileExtension) > 0) {
 					//endsWith(fileListFunction[i], defaultCV7000metadataFileExtensionList[7]) //  see definition of array defaultCV7000metadataFileExtensionList in the beginning
 					) {
 					CV7000metadataFileList = Array.concat(CV7000metadataFileList, fileListFunction[i]);
-					print("Added " + fileListFunction[i] + " to CV7000 meta data file list");
+					printToLog(logFilePath, true, "Added " + fileListFunction[i] + " to CV7000 meta data file list");
 				}
 			}
 		}
-		print(returnedFileList.length + " file(s) found with extension " + fileExtension + ".");
-		print(CV7000metadataFileList.length + " file(s) of CV7000 meta data found");
+		printToLog(logFilePath, true, "" + returnedFileList.length + " file(s) found with extension " + fileExtension + ".");
+		printToLog(logFilePath, true, "" + CV7000metadataFileList.length + " file(s) of CV7000 meta data found");
 		if (displayList) {Array.show("All files - filtered for " + fileExtension, returnedFileList);Array.show("CV7000 meta data files", CV7000metadataFileList);} 
 		} else {
 		returnedFileList = fileListFunction;	
@@ -383,7 +405,7 @@ returnedList = newArray(0); //this list stores all items of the input list that 
 for (i = 0; i < inputList.length; i++) {
 	if (indexOf(inputList[i],filterStringFunction) != -1) returnedList = Array.concat(returnedList,inputList[i]);
 	}
-print(returnedList.length + " file(s) found after filtering: " + filterStringFunction); 
+printToLog(logFilePath, true, "" + returnedList.length + " file(s) found after filtering: " + filterStringFunction); 
 if (displayList) {Array.show("List after filtering for " + filterStringFunction, returnedFileList);}
 return returnedList;
 }
@@ -394,7 +416,7 @@ function getUniqueWellListCV7000(inputArray, displayList) {
 if (lastIndexOf(inputArray[0],"_T0") > 0) { //check first well
 	currentWell = substring(inputArray[0],lastIndexOf(inputArray[0],"_T0")-3,lastIndexOf(inputArray[0],"_T0"));   //first well found
 	} else {
-	print("no well found in path:", inputArray[i]);	
+	printToLog(logFilePath, true, "no well found in path: " + inputArray[i]);	
 	exit("No well information found in file name. Please double-check the file filtering...");
 	}	
 returnedWellList = newArray(currentWell);     //this list stores all unique wells found and is returned at the end of the function
@@ -411,13 +433,13 @@ for (i = 1; i < inputArray.length; i++) {
 				}
 			}  //end while
 		} else {
-		print("no well found in path:", inputArray[i]);	
+		printToLog(logFilePath, true, "no well found in path: " + inputArray[i]);	
 		}		
 	if (valueUnique) returnedWellList = Array.concat(returnedWellList, currentWell);  //if value was not found in array of unique values add it to the end of the array of unique values
 	}
-print(returnedWellList.length + " well(s) found."); 
+printToLog(logFilePath, true, "" + returnedWellList.length + " well(s) found."); 
 Array.sort(returnedWellList);
-Array.print(returnedWellList);
+printArrayToLog(logFilePath, true, returnedWellList);
 if (displayList) {Array.show("List of " + returnedWellList.length + " unique wells", returnedWellList);}	
 return returnedWellList;
 }
@@ -428,7 +450,7 @@ function getUniqueWellFieldListCV7000(inputArray, displayList) {
 if (lastIndexOf(inputArray[0],"_T0") > 0) { //check first well field
 	currentWellField = substring(inputArray[0],lastIndexOf(inputArray[0],"_T0")-3,lastIndexOf(inputArray[0],"_T0")+10);   //first well field found
 	} else {
-	print("no well found in path:", inputArray[i]);	
+	printToLog(logFilePath, true, "no well fields found in path: " + inputArray[i]);	
 	exit("No well field information found in file name. Please double-check the file filtering...");
 	}
 returnedWellFieldList = newArray(currentWellField);     //this list stores all unique wells fields found and is returned at the end of the function
@@ -447,14 +469,14 @@ for (i = 0; i < inputArray.length; i++) {
 				}
 			}  //end while
 		} else {
-		print("no well field found in path:", inputArray[i]);	
+		printToLog(logFilePath, true, "no well field found in path: " + inputArray[i]);	
 		}		
 	//print("final:", currentWellField, valueUnique, returnedWellFieldList.length);
 	if (valueUnique) returnedWellFieldList = Array.concat(returnedWellFieldList, currentWellField);  //if value was not found in array of unique values add it to the end of the array of unique values
 	}
-print(returnedWellFieldList.length + " well field(s) found."); 
+printToLog(logFilePath, true, "" + returnedWellFieldList.length + " well field(s) found."); 
 Array.sort(returnedWellFieldList);
-Array.print(returnedWellFieldList);
+printArrayToLog(logFilePath, true, returnedWellFieldList);
 if (displayList) {Array.show("List of " + returnedWellFieldList.length + " unique well fields", returnedWellFieldList);}	
 return returnedWellFieldList;
 }
@@ -478,9 +500,9 @@ for (i = 0; i < inputArray.length; i++) {
 		}  //end while
 	if (valueUnique) returnedFieldList = Array.concat(returnedFieldList, currentField);  //if value was not found in array of unique values add it to the end of the array of unique values
 	}
-print(returnedFieldList.length + " field(s) found."); 
+printToLog(logFilePath, true, "" + returnedFieldList.length + " field(s) found."); 
 Array.sort(returnedFieldList);
-Array.print(returnedFieldList);
+printArrayToLog(logFilePath, true, returnedFieldList);
 if (displayList) {Array.show("List of " + returnedFieldList.length + " unique fields", returnedFieldList);}	
 return returnedFieldList;
 }
@@ -503,9 +525,9 @@ for (i = 1; i < inputArray.length; i++) {
 		}  //end while
 	if (valueUnique) returnedChannelList = Array.concat(returnedChannelList, currentChannel);  //if value was not found in array of unique values add it to the end of the array of unique values
 	}
-print(returnedChannelList.length + " channel(s) found."); 
+printToLog(logFilePath, true, "" + returnedChannelList.length + " channel(s) found."); 
 Array.sort(returnedChannelList);
-Array.print(returnedChannelList);
+printArrayToLog(logFilePath, true, returnedChannelList);
 if (displayList) {Array.show("List of " + returnedChannelList.length + " unique channels", returnedChannelList);}	
 return returnedChannelList;
 }
@@ -528,10 +550,10 @@ for (i = 1; i < inputArray.length; i++) {
 		}  //end while
 	if (valueUnique) returnedZplaneList = Array.concat(returnedZplaneList, currentZplane);  //if value was not found in array of unique values add it to the end of the array of unique values
 	}
-print(returnedZplaneList.length + " Zplane(s) found."); 
+printToLog(logFilePath, true, "" + returnedZplaneList.length + " Z-plane(s) found."); 
 Array.sort(returnedZplaneList);
-Array.print(returnedZplaneList);
-if (displayList) {Array.show("List of " + returnedZplaneList.length + " unique Zplanes", returnedZplaneList);}	
+printArrayToLog(logFilePath, true, returnedZplaneList);
+if (displayList) {Array.show("List of " + returnedZplaneList.length + " unique Z-planes", returnedZplaneList);}	
 return returnedZplaneList;
 }
 
@@ -554,9 +576,53 @@ if (nImages > 0) currentWindow = getTitle();
 selectWindow("Log");
 if(outputPath != "not available") {
     saveAs("Text", outputPath + "Log_"+year+"-"+month+"-"+dayOfMonth+", h"+hour+"-m"+minute+"-s"+second+".txt");
-    if (File.exists(outputPath + "Log_temp_" + tempLogFileNumber +".txt")) File.delete(outputPath + "Log_temp_" + tempLogFileNumber + ".txt");  //delete current tempLog file 	
+    if (File.exists(outputPath + "Log_Window_temp_" + tempLogFileNumber +".txt")) File.delete(outputPath + "Log_Window_temp_" + tempLogFileNumber + ".txt");  //delete current tempLog file 	
     }
 if (nImages > 0) selectWindow(currentWindow);
+}
+
+
+//function prints (text) to log file and optionally prints to log window
+//example: printToLog(myLogFilePath, true, "single text");
+function printToLog(logFile, printToLogWindow, textToLog) {
+if (printToLogWindow) print(textToLog);  // optionally print to log window
+if (logFile == 0) {         // if output folder is not yet defined 
+	tempStoreForPrinting = tempStoreForPrinting + textToLog + "\r\n";
+	} else {
+	if (tempStoreForPrinting !=  "") {
+		File.append(tempStoreForPrinting, logFile);         // print (append) temp store
+		File.append("\r\n", logFile);
+		tempStoreForPrinting =  "";
+		}
+	File.append(textToLog, logFile);         // always print (append) to file, file will be automatisally saved
+	File.append("\r\n", logFile);            // write carriage return at end of line, otherwise it will be appended to end of line 
+	}
+}
+
+
+//function prints array to log file and optionally prints to log window
+//example: printArrayToLog(myLogFilePath, true, myArray);
+function printArrayToLog(logFile, printToLogWindow, arrayToLog) {
+// first generate a single text from array
+arrayText = "";
+for (i = 0; i < arrayToLog.length; i++) {
+	arrayText = arrayText + arrayToLog[i];     
+	if (i < (arrayToLog.length-1)) arrayText = arrayText + ", ";
+	}
+//Array.print(arrayToLog);
+//print(arrayText);
+if (logFile == 0) {         // if output folder is not yet defined 
+	tempStoreForPrinting = tempStoreForPrinting + arrayText + "\r\n";
+	} else {
+	if (tempStoreForPrinting !=  "") {
+		File.append(tempStoreForPrinting, logFile);         // print (append) temp store
+		File.append("\r\n", logFile);
+		tempStoreForPrinting =  "";
+		}
+	}
+if (printToLogWindow) print(arrayText);  // optionally print to log window
+File.append(arrayText, logFile)	         // always print (append) to file, file will be automatisally saved
+File.append("\r\n", logFile);            // write carriage return at end of line, otherwise it will be appended to end of line 
 }
 
 
@@ -576,12 +642,12 @@ function correctPixelSize(pixelSizeMrf) {
 if (pixelSizeMrf <= 0) return;
 getPixelSize(pixelUnit, pixelWidth, pixelHeight);
 if (pixelUnit == "inches") {  // default, but wrong in CV7000 images
-	print("Pixel units:", pixelUnit, "; pixel size and unit will be corrected.");
+	printToLog(logFilePath, false, "Pixel units: " + pixelUnit + "; pixel size and unit will be corrected.");
 	Stack.setXUnit("um");
 	Stack.setYUnit("um");
 	run("Properties...", "channels=1 slices=1 frames=1 pixel_width=" + pixelSizeMrf + " pixel_height=" + pixelSizeMrf + " voxel_depth=1");
 	} else {
-	print("Pixel size was already adapted. No correction will be done. Pixel units and sizes are:", pixelUnit, pixelWidth, pixelHeight);	
+	printArrayToLog(logFilePath, false, newArray("Pixel size was already adapted. No correction will be done. Pixel units and sizes are:", pixelUnit, pixelWidth, pixelHeight));	
 	}
 }
 
@@ -592,7 +658,7 @@ function readMRFfile(inputPath) {
 mrfFilePath = inputPath + "MeasurementDetail.mrf";
 for (i = 0; i < CV7000metadataFileList.length; i++) { // try to find .mrf file in CV7000metadataFileList
 	if (endsWith(CV7000metadataFileList[i], ".mrf")) {
-		print("found .mrf file in meta data file list:", CV7000metadataFileList[i]);
+		printToLog(logFilePath, true, "found .mrf file in meta data file list: " + CV7000metadataFileList[i]);
 		mrfFilePath = CV7000metadataFileList[i];
 		}
 	}
@@ -600,12 +666,12 @@ pixelSizeMrf = 0;  // by default initialize value that is given back by this fun
 doPixelSizeCorr = true;  // function variable that checks it pixel sizes are unique in .mrf, otherwise funtion will return -1 
 // open .mrf file and split into line array  
 if (!File.exists(mrfFilePath)) {
-	print("Could not find .mrf file:", mrfFilePath, "\nPixel size could not be determined and is not automatically corrected!");
+	printToLog(logFilePath, true, "Could not find .mrf file: " + mrfFilePath + "\r\nPixel size could not be determined and is not automatically corrected!");
     return -1;
 	} else {
 	mrfFile = File.openAsString(mrfFilePath);
 	lines = split(mrfFile,"\n");
-	print("Reading .mrf file... length:", mrfFile.length, "; lines:", lines.length);
+	printToLog(logFilePath, true, "Reading .mrf file... length: " + mrfFile.length + "; lines :" + lines.length);
 	// go through each line and fine dimension for each channel
 	for (line = 0; line < lines.length; line++) {
     	if (matches(lines[line], "(.*Dimension.*)") ) {
@@ -615,14 +681,14 @@ if (!File.exists(mrfFilePath)) {
  		   		pixelSizeMrf = splitLines[3];
     			} else {
     			if (pixelSizeMrf != splitLines[3] && doPixelSizeCorr) {     // if multiple pixel sizes or no correction 
-    				print("Multiple pixel sizes in .mrf file. No correction of pixel sizes will be applied, because this could lead to mistakes...");
+    				printToLog(logFilePath, true, "Multiple pixel sizes in .mrf file. No correction of pixel sizes will be applied, because this could lead to mistakes...");
     				doPixelSizeCorr = false;
     				pixelSizeMrf = splitLines[3];
     				} else {                                                 // if all is normal
     				pixelSizeMrf = splitLines[3];
     				}
     			}
-    		print("Channel", channelMrf, "has pixel size of", pixelSizeMrf, "um/px");
+    		printToLog(logFilePath, true, "Channel " + channelMrf + " has pixel size of " + pixelSizeMrf + " um/px");
     		}  // line matches
 		}  // for each line
 	if (doPixelSizeCorr == false) {
@@ -641,35 +707,35 @@ mrfFilePath = inputPath + "MeasurementDetail.mrf";
 channelNumber = substring(channel, 2, 3);
 for (i = 0; i < CV7000metadataFileList.length; i++) { // try to find .mrf file in CV7000metadataFileList
 	if (endsWith(CV7000metadataFileList[i], ".mrf") & !(endsWith(CV7000metadataFileList[i], "_original.mrf"))) {
-		print("found .mrf file in meta data file list:", CV7000metadataFileList[i]);
+		printToLog(logFilePath, true, "found .mrf file in meta data file list: " + CV7000metadataFileList[i]);
 		mrfFilePath = CV7000metadataFileList[i];
 		}
 	}
 // open .mrf file and split into line array  
 if (!File.exists(mrfFilePath)) {
-	print("Could not find .mrf file:", mrfFilePath, "\n.mrf file could not be updated!");
+	printToLog(logFilePath, true, "Could not find .mrf file: " + mrfFilePath + "\r\n.mrf file could not be updated!");
     return -1;
 	} else {
 	mrfFilePathOriginal = substring(mrfFilePath, 0, lengthOf(mrfFilePath) - 4) + "_original.mrf";	
 	if (!File.exists(mrfFilePathOriginal)) {
-		print("Saving original .mrf file under new name:", mrfFilePathOriginal);
+		printToLog(logFilePath, true, "Saving original .mrf file under new name: " + mrfFilePathOriginal);
 		File.copy(mrfFilePath, mrfFilePathOriginal);
 		} else {
-		print("\n === WARNING!!! ===\n This file exists:\n", inputPath + mrfFilePathOriginal);	
-		print("Original .mrf file was already saved under new name:", mrfFilePathOriginal);	
-		print("An original .mrf (from CV7000) was found and images may have been processed already!");
-		print("In case of overwriting already processed and cropped images may be accidentally be processed agian!!!");
-		print("Pleasse check the indicated folder before continuing!");
+		printToLog(logFilePath, true, "\r\n === WARNING!!! ===\r\n This file exists:\r\n" + inputPath + mrfFilePathOriginal);	
+		printToLog(logFilePath, true, "Original .mrf file was already saved under new name: " + mrfFilePathOriginal);	
+		printToLog(logFilePath, true, "An original .mrf (from CV7000) was found and images may have been processed already!");
+		printToLog(logFilePath, true, "In case of overwriting already processed and cropped images may be accidentally be processed agian!!!");
+		printToLog(logFilePath, true, "Pleasse check the indicated folder before continuing!");
 		Dialog.create("=== WARNING! ===");
-		Dialog.addMessage("            === WARNING! ===\nThe .mrf file has been modified already?", 18, "#ff0000");
+		Dialog.addMessage("            === WARNING! ===\r\nThe .mrf file has been modified already?", 18, "#ff0000");
 		Dialog.addMessage("Please check also log file....");
 		Dialog.addMessage("An original .mrf (from CV7000) was found and images may have been processed already!");
 		Dialog.addCheckbox("Confirm updating of .mrf file (and potentially overwriting files) (tick for 'yes')?", false);
 		Dialog.show();
 		doubleCheckMRFupdate = !(Dialog.getCheckbox());  // is !true => false if overwriting is confirmed
-		print("Updating .mrf file set to:", !doubleCheckMRFupdate, "\n");  //here if checked !!true => true
+		printToLog(logFilePath, true, "Updating .mrf file set to: " + !doubleCheckMRFupdate + "\r\n");  //here if checked !!true => true
 		if (doubleCheckMRFupdate) {
-			print("EXIT: update and continuing processing (potential overwriting) was not confirmed!");
+			printToLog(logFilePath, true, "EXIT: update and continuing processing (potential overwriting) was not confirmed!");
 			saveLogFinal(outputPath, tempLogFileNumber);
 			exit("EXIT: update and continuing processing was not confirmed!\nPlease see log...");
 			}
@@ -677,28 +743,28 @@ if (!File.exists(mrfFilePath)) {
 	mrfFile = File.openAsString(mrfFilePath);
 	lines = split(mrfFile,"\n");
 	//Array.show("MRF file", lines);
-	print("Reading .mrf file... length:", mrfFile.length, "; lines:", lines.length);
-	//for (i = 0; i < lines.length; i++) print(lines[i]);
+	printToLog(logFilePath, true, "Reading .mrf file... length: " + mrfFile.length + "; lines: " + lines.length);
+	//for (i = 0; i < lines.length; i++) printToLog(logFilePath, true, lines[i]);
 	// go through each line and fine dimension for each channel
 	for (line = 0; line < lines.length; line++) {
     	//if (matches(lines[line], "(.*bts:Ch=\"" + channelNumber + "\".*)") ) {  // update specific channels for dimension in .mrf file => display in CV7000 is scewed !!! 
     	if (matches(lines[line], "(.*bts:MeasurementChannel bts:Ch=.*)" ) ) {     // update all channels for dimension in .mrf file => otherwise display in CV7000 is still scewed 
-    		//print(lines[line]);
+    		//printToLog(logFilePath, true, lines[line]);
     		splitLines = split(lines[line], "\"");
-    		//for (i = 0; i < splitLines.length; i++) print(i, splitLines[i]);
-    		print("Original .mrf dimensions for channel", splitLines[1], "are:", splitLines[12] + splitLines[13], "; and", splitLines[14] + splitLines[15]);
-    		print("Croping reduces file size to", d2s((1 * cropWidth * cropHeight) / (1 * splitLines[13] * splitLines[15]) * 100, 2), "%.");
+    		//for (i = 0; i < splitLines.length; i++) printToLog(logFilePath, true, i, splitLines[i]);
+    		printToLog(logFilePath, true, "Original .mrf dimensions for channel " + splitLines[1] + " are: " + splitLines[12] + splitLines[13] + "; and " + splitLines[14] + splitLines[15]);
+    		printToLog(logFilePath, true, "Croping reduces file size to " + d2s((1 * cropWidth * cropHeight) / (1 * splitLines[13] * splitLines[15]) * 100, 2) + "%.");
     		splitLines[13] = cropWidth;
     		splitLines[15] = cropHeight;
-    		print("Updated .mrf dimensions for channel", splitLines[1], "are:", splitLines[12] + splitLines[13], "; and", splitLines[14] + splitLines[15]);
+    		printToLog(logFilePath, true, "Updated .mrf dimensions for channel " + splitLines[1] + " are: " + splitLines[12] + splitLines[13] + "; and " + splitLines[14] + splitLines[15]);
     		lines[line] = String.join(splitLines, "\"");
     		lines[line]  = replace(lines[line], "=\" />", "=\"\" />");  // fix issue with emtpy string not placed into array value by ImageJ: ...bts:ShadingCorrectionSource=" />  => ...bts:ShadingCorrectionSource="" />
-    		//print(lines[line]);
+    		//printToLog(logFilePath, true, lines[line]);
     		}  // line matches
 		}  // for each line
 	mrfFile = String.join(lines,"\r\n");  // make \r\n as CRLF (cariage return line feed) since this is what CV7000 software needs 
 	File.saveString(mrfFile, mrfFilePath);	
-	print("Updated and saved the .mrf file ...");
+	printToLog(logFilePath, true, "Updated and saved the .mrf file ...");
 	}  // if exists mrfFilePath
 }  // function
 
@@ -710,7 +776,7 @@ function copyFiles(listOfFilePaths, outputPath) {
 for (i = 0; i < listOfFilePaths.length; i++) {
 	currentFile = substring(listOfFilePaths[i], lastIndexOf(listOfFilePaths[i], File.separator) + 1);
 	File.copy(listOfFilePaths[i], outputPath + currentFile);
-	print("copied:", currentFile);	
+	printToLog(logFilePath, true, "copied: " + currentFile);	
 	}  //end for
 }  // function		
 ////////////////////////////////////////   E N D    O F    M A C R O   ////////////////////////////
